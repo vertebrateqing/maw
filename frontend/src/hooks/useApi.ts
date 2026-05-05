@@ -1,0 +1,51 @@
+import { useState, useEffect, useCallback } from "react";
+import type { MawState, DiffResponse, LogResponse } from "@/types";
+
+const API_BASE = "/api";
+
+export function useApi() {
+  const [state, setState] = useState<MawState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_BASE}/events`);
+    eventSource.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        setState(data);
+      } catch {
+        // ignore parse errors
+      }
+    };
+    eventSource.onerror = () => {
+      setError("Connection lost");
+    };
+    return () => eventSource.close();
+  }, []);
+
+  const fetchDiff = useCallback(async (agentId: number): Promise<string> => {
+    const res = await fetch(`${API_BASE}/diff/${agentId}`);
+    const data: DiffResponse = await res.json();
+    return data.diff;
+  }, []);
+
+  const fetchLog = useCallback(async (agentId: number): Promise<string> => {
+    const res = await fetch(`${API_BASE}/log/${agentId}`);
+    const data: LogResponse = await res.json();
+    return data.log;
+  }, []);
+
+  const approve = useCallback(async (agentId: number) => {
+    await fetch(`${API_BASE}/approve/${agentId}`, { method: "POST" });
+  }, []);
+
+  const reject = useCallback(async (agentId: number) => {
+    await fetch(`${API_BASE}/reject/${agentId}`, { method: "POST" });
+  }, []);
+
+  const kill = useCallback(async (agentId: number) => {
+    await fetch(`${API_BASE}/kill/${agentId}`, { method: "POST" });
+  }, []);
+
+  return { state, error, fetchDiff, fetchLog, approve, reject, kill };
+}
