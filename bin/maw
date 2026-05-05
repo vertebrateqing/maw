@@ -10,4 +10,314 @@ source "${MAW_DIR}/lib/state.sh"
 source "${MAW_DIR}/lib/git.sh"
 source "${MAW_DIR}/lib/ui.sh"
 
-# TODO: command dispatch will be added in Task 6
+# maw_help - show usage information
+maw_help() {
+  local lang="${MAW_LANG:-en}"
+
+  if [[ "$lang" == "zh" ]]; then
+    cat << 'HELP'
+用法: maw <命令> [选项]
+
+命令:
+  init [N]          初始化 MAW，创建 N 个代理 (默认 4)
+  dispatch <任务>   派发任务到空闲代理
+  status            显示状态看板
+  watch             持续刷新状态看板
+  merge <id>        合并代理分支到 main
+  reset <id>        重置代理到 main
+  kill <id>         终止代理进程
+  menu              交互式菜单
+  help              显示帮助信息
+  version           显示版本
+
+环境变量:
+  MAW_LANG          语言: en | zh (默认: en)
+  MAW_MAX_AGENTS    最大代理数 (默认: 4)
+
+示例:
+  maw init 6
+  maw dispatch "重构认证模块"
+  maw status
+  maw merge 2
+HELP
+  else
+    cat << 'HELP'
+Usage: maw <command> [options]
+
+Commands:
+  init [N]          Initialize MAW with N agents (default: 4)
+  dispatch <task>   Dispatch task to an idle agent
+  status            Show status board
+  watch             Continuously refresh status board
+  merge <id>        Merge agent branch into main
+  reset <id>        Reset agent to main
+  kill <id>         Kill agent process
+  menu              Interactive menu
+  help              Show this help message
+  version           Show version
+
+Environment:
+  MAW_LANG          Language: en | zh (default: en)
+  MAW_MAX_AGENTS    Maximum number of agents (default: 4)
+
+Examples:
+  maw init 6
+  maw dispatch "Refactor auth module"
+  maw status
+  maw merge 2
+HELP
+  fi
+}
+
+# maw_cmd_init <count>
+maw_cmd_init() {
+  local count="${1:-4}"
+  local root
+  root="$(maw_project_root)"
+
+  maw_log info "Initializing MAW with ${count} agents..."
+  maw_state_init
+
+  for ((i=1; i<=count; i++)); do
+    maw_git_worktree_create "$i"
+    maw_state_add_agent "$i" "${root}/.agents/agent-${i}" "agent/${i}"
+  done
+
+  maw_log info "MAW initialized. Run 'maw status' to see the board."
+}
+
+# maw_cmd_dispatch <task> [agent_id]
+maw_cmd_dispatch() {
+  local task="$1"
+  local agent_id="${2:-}"
+  local root
+  root="$(maw_project_root)"
+
+  if [[ -z "$agent_id" ]]; then
+    agent_id=$(maw_state_get_idle_agent)
+    if [[ -z "$agent_id" ]]; then
+      maw_die "No idle agents available. Run 'maw status' to check."
+    fi
+  fi
+
+  local status
+  status=$(maw_state_get_agent_status "$agent_id")
+  if [[ "$status" != "idle" ]]; then
+    maw_die "Agent ${agent_id} is not idle (status: ${status})"
+  fi
+
+  local worktree="${root}/.agents/agent-${agent_id}"
+
+  # Update state
+  local pid
+  maw_state_update_agent "$agent_id" "running" "$task"
+
+  # Start claude in the worktree via tmux
+  # Note: This assumes we're already inside a tmux session
+  if [[ -n "${TMUX:-}" ]]; then
+    local window_name="agent-${agent_id}"
+    tmux new-window -n "$window_name" -c "$worktree" \
+      "claude '${task}'; maw_state_update_agent ${agent_id} done; bash"
+
+    # Get PID of the tmux window's process (approximate)
+    pid=$(tmux list-panes -t "$window_name" -F '#{pane_pid}' 2>/dev/null | head -n1)
+    if [[ -n "$pid" ]]; then
+      maw_state_update_agent "$agent_id" "running" "$task" "$pid"
+    fi
+
+    maw_log info "Dispatched task to agent-${agent_id} in tmux window: ${window_name}"
+  else
+    maw_die "Not running inside tmux. Please start tmux first."
+  fi
+}
+
+# maw_cmd_status
+maw_cmd_status() {
+  local lang="${MAW_LANG:-en}"
+  maw_ui_render_board "$lang"
+}
+
+# maw_cmd_watch
+maw_cmd_watch() {
+  local lang="${MAW_LANG:-en}"
+  local interval="${MAW_WATCH_INTERVAL:-2}"
+
+  while true; do
+    clear
+    maw_ui_render_board "$lang"
+    echo ""
+    if [[ "$lang" == "zh" ]]; then
+      echo "按 Ctrl+C 退出"
+    else
+      echo "Press Ctrl+C to exit"
+    fi
+    sleep "$interval"
+  done
+}
+
+# maw_cmd_merge <agent_id>
+maw_cmd_merge() {
+  local agent_id="$1"
+
+  if maw_git_merge_agent "$agent_id"; then
+    maw_state_update_agent "$agent_id" "idle" ""
+    maw_log info "Agent ${agent_id} merged and reset to idle"
+  fi
+}
+
+# maw_cmd_reset <agent_id>
+maw_cmd_reset() {
+  local agent_id="$1"
+
+  maw_git_worktree_reset "$agent_id"
+  maw_state_update_agent "$agent_id" "idle" ""
+  maw_log info "Agent ${agent_id} reset to main"
+}
+
+# maw_cmd_kill <agent_id>
+maw_cmd_kill() {
+  local agent_id="$1"
+  local state_file
+  state_file="$(maw_state_file)"
+  local pid
+  pid=$(jq -r ".agents[] | select(.id == ${agent_id}) | .pid // empty" "$state_file")
+
+  if [[ -n "$pid" && "$pid" != "null" ]]; then
+    kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
+    maw_log info "Killed agent ${agent_id} (PID: ${pid})"
+  fi
+
+  # Also kill the tmux window if it exists
+  tmux kill-window -t "agent-${agent_id}" 2>/dev/null || true
+
+  maw_state_update_agent "$agent_id" "idle" ""
+}
+
+# maw_cmd_menu
+maw_cmd_menu() {
+  local lang="${MAW_LANG:-en}"
+
+  while true; do
+    clear
+    maw_ui_render_board "$lang"
+    maw_ui_render_menu "$lang"
+
+    read -r cmd args
+
+    case "$cmd" in
+      list|status)
+        maw_ui_render_board "$lang"
+        echo ""
+        if [[ "$lang" == "zh" ]]; then
+          echo "按 Enter 继续..."
+        else
+          echo "Press Enter to continue..."
+        fi
+        read -r
+        ;;
+      dispatch)
+        if [[ -n "$args" ]]; then
+          maw_cmd_dispatch "$args"
+        else
+          if [[ "$lang" == "zh" ]]; then
+            echo "错误: 需要提供任务描述"
+          else
+            echo "Error: task description required"
+          fi
+          sleep 2
+        fi
+        ;;
+      merge)
+        if [[ -n "$args" ]]; then
+          maw_cmd_merge "$args"
+        else
+          echo "Error: agent ID required"
+          sleep 2
+        fi
+        ;;
+      reset)
+        if [[ -n "$args" ]]; then
+          maw_cmd_reset "$args"
+        else
+          echo "Error: agent ID required"
+          sleep 2
+        fi
+        ;;
+      kill)
+        if [[ -n "$args" ]]; then
+          maw_cmd_kill "$args"
+        else
+          echo "Error: agent ID required"
+          sleep 2
+        fi
+        ;;
+      quit|exit|q)
+        break
+        ;;
+      *)
+        if [[ "$lang" == "zh" ]]; then
+          echo "未知命令: $cmd"
+        else
+          echo "Unknown command: $cmd"
+        fi
+        sleep 1
+        ;;
+    esac
+  done
+}
+
+# Main command dispatch
+main() {
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+    init)
+      maw_cmd_init "${1:-4}"
+      ;;
+    dispatch)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw dispatch <task> [agent-id]"
+      fi
+      maw_cmd_dispatch "$1" "${2:-}"
+      ;;
+    status)
+      maw_cmd_status
+      ;;
+    watch)
+      maw_cmd_watch
+      ;;
+    merge)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw merge <agent-id>"
+      fi
+      maw_cmd_merge "$1"
+      ;;
+    reset)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw reset <agent-id>"
+      fi
+      maw_cmd_reset "$1"
+      ;;
+    kill)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw kill <agent-id>"
+      fi
+      maw_cmd_kill "$1"
+      ;;
+    menu)
+      maw_cmd_menu
+      ;;
+    help|-h|--help)
+      maw_help
+      ;;
+    version|-v|--version)
+      echo "maw version ${MAW_VERSION}"
+      ;;
+    *)
+      maw_die "Unknown command: $cmd. Run 'maw help' for usage."
+      ;;
+  esac
+}
+
+main "$@"
