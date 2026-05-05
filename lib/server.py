@@ -4,10 +4,12 @@
 import os
 import json
 from pathlib import Path
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from sse_starlette.sse import EventSourceResponse
 from lib.pty_bridge import PtyBridge
+from lib.sse_broadcaster import StateBroadcaster
 
 MAW_DIR = Path(__file__).parent.parent.resolve()
 STATIC_DIR = MAW_DIR / "static"
@@ -24,6 +26,18 @@ def get_bridge():
         _bridge = PtyBridge(["claude"], cwd=str(os.getcwd()))
         _bridge.start()
     return _bridge
+
+
+broadcaster = None
+
+
+def get_broadcaster():
+    global broadcaster
+    if broadcaster is None:
+        broadcaster = StateBroadcaster(MAW_DIR / ".maw" / "state.json")
+        broadcaster.start()
+    return broadcaster
+
 
 # Serve static files (React build output)
 if STATIC_DIR.exists():
@@ -62,3 +76,9 @@ async def ws_master(websocket: WebSocket):
         pass
     finally:
         bridge.remove_client(send_to_client)
+
+
+@app.get("/api/events")
+async def api_events(request: Request):
+    bc = get_broadcaster()
+    return EventSourceResponse(bc.event_generator(request))
