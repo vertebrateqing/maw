@@ -92,6 +92,18 @@ When state changes to `pending_review`, the daemon writes into the master PTY:
 
 Master Claude sees this as terminal output and acts on it.
 
+## Frontend Stack
+
+- **React 18 + TypeScript** — Component architecture with type safety
+- **Vite** — Fast dev server and optimized builds
+- **Tailwind CSS** — Utility-first styling, matches existing dark theme
+- **shadcn/ui** — Accessible, beautiful components (Button, Card, Badge, Sheet, Tabs, Toast)
+- **xterm.js** — Web terminal for master Claude PTY
+- **react-diff-viewer-continued** (or custom) — GitHub-style diff rendering
+- **lucide-react** — Consistent iconography
+
+Build output (`frontend/dist/`) is copied to `static/` and committed to git so users do not need Node.js to run MAW. Developers who want to modify the UI install Node.js and run `npm run dev` / `npm run build`.
+
 ## Frontend: Dashboard UI
 
 ### Layout — Desktop / Landscape
@@ -393,11 +405,15 @@ Run `maw status` anytime to see agent board.
 | `lib/server.py` | FastAPI app, routes |
 | `lib/pty_bridge.py` | PTY ↔ WebSocket bridge |
 | `lib/sse_broadcaster.py` | State file watcher + SSE |
-| `static/index.html` | Dashboard SPA |
-| `static/css/theme.css` | Tailwind custom theme |
-| `static/js/terminal.js` | xterm.js integration |
-| `static/js/dashboard.js` | Agent cards, diff viewer |
-| `static/js/api.js` | HTTP API client |
+| `frontend/src/App.tsx` | React root component |
+| `frontend/src/components/Terminal.tsx` | xterm.js wrapper |
+| `frontend/src/components/AgentCard.tsx` | Agent state cards |
+| `frontend/src/components/DiffViewer.tsx` | GitHub-style diff viewer |
+| `frontend/src/components/Toast.tsx` | Notification toasts |
+| `frontend/src/components/ShortcutBar.tsx` | Mobile shortcut bar |
+| `frontend/src/hooks/useApi.ts` | HTTP API + SSE hooks |
+| `frontend/src/hooks/useTerminal.ts` | WebSocket PTY hook |
+| `static/` | Vite build output (pre-built, committed) |
 | `CLAUDE.md` | Claude behavior rules |
 
 ## Security Considerations
