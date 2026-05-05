@@ -1,0 +1,8 @@
+# MAW runtime files
+.maw/state.json
+.maw/logs/
+.agents/
+
+# Test artifacts
+*.tmp
+*.log

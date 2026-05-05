@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MAW_VERSION="0.1.0"
+MAW_DIR="${MAW_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+# Source libraries
+source "${MAW_DIR}/lib/core.sh"
+source "${MAW_DIR}/lib/state.sh"
+source "${MAW_DIR}/lib/git.sh"
+source "${MAW_DIR}/lib/ui.sh"
+
+# TODO: command dispatch will be added in Task 6
