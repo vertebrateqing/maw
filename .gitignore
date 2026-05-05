@@ -3,6 +3,9 @@
 .maw/logs/
 .agents/
 
+# Worktrees
+.worktrees/
+
 # Test artifacts
 *.tmp
 *.log
