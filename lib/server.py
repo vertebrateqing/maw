@@ -6,29 +6,33 @@ import json
 from pathlib import Path
 import subprocess
 
-from fastapi import FastAPI, WebSocket, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
-from lib.pty_bridge import PtyBridge
 from lib.sse_broadcaster import StateBroadcaster
 from lib.agent_runner import run_agent, kill_agent
+from lib.auto_dispatcher import AutoDispatcher
 
 MAW_DIR = Path(os.getcwd())
 STATIC_DIR = Path(__file__).parent.parent.resolve() / "static"
 
-app = FastAPI(title="MAW Server", version="0.2.0")
+app = FastAPI(title="MAW Server", version="0.2.1")
 
-# Global bridge instance (initialized on first connection)
-_bridge = None
+_dispatcher = None
 
 
-def get_bridge():
-    global _bridge
-    if _bridge is None:
-        _bridge = PtyBridge(["claude"], cwd=str(os.getcwd()))
-        _bridge.start()
-    return _bridge
+def get_dispatcher():
+    global _dispatcher
+    if _dispatcher is None:
+        _dispatcher = AutoDispatcher(os.getcwd())
+        _dispatcher.start()
+    return _dispatcher
+
+
+@app.on_event("startup")
+async def startup_event():
+    get_dispatcher()
 
 
 broadcaster = None
@@ -120,28 +124,6 @@ async def api_messages_delete(msg_id: str):
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr)
     return {"status": "deleted", "id": msg_id}
-
-
-@app.websocket("/ws/master")
-async def ws_master(websocket: WebSocket):
-    await websocket.accept()
-    bridge = get_bridge()
-
-    async def send_to_client(text: str):
-        try:
-            await websocket.send_text(text)
-        except Exception:
-            pass
-
-    bridge.add_client(send_to_client)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            bridge.write(data)
-    except Exception:
-        pass
-    finally:
-        bridge.remove_client(send_to_client)
 
 
 @app.get("/api/events")

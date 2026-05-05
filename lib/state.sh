@@ -64,7 +64,7 @@ maw_state_add_agent() {
        --arg worktree "$worktree" \
        --arg branch "$branch" \
        --arg ts "$timestamp" \
-       '.agents += [{"id": $id, "worktree": $worktree, "branch": $branch, "status": "idle", "task": "", "pid": null, "started_at": null, "completed_at": null}]' \
+       '.agents += [{"id": $id, "worktree": $worktree, "branch": $branch, "status": "idle", "task": "", "pid": null, "started_at": null, "completed_at": null, "config": {"auto_pull": false, "auto_test": true}}]' \
        "$state_file" > "${state_file}.tmp"
     mv "${state_file}.tmp" "$state_file"
   else
@@ -219,4 +219,17 @@ maw_state_shift_message() {
      "$state_file" > "${state_file}.tmp"
   mv "${state_file}.tmp" "$state_file"
   echo "$msg"
+}
+
+# maw_state_update_agent_config <id> <key> <value>
+maw_state_update_agent_config() {
+  local id="$1"
+  local key="$2"
+  local value="$3"
+  local state_file
+  state_file="$(maw_state_file)"
+  jq --argjson id "$id" --arg key "$key" --argjson value "$value" \
+     '.agents |= map(if .id == $id then .config[$key] = $value else . end)' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
 }
