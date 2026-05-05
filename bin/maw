@@ -254,6 +254,23 @@ maw_cmd_queue_list() {
   maw_state_list_messages
 }
 
+# maw_cmd_config <agent_id> <key> <value>
+maw_cmd_config() {
+  local agent_id="$1"
+  local key="$2"
+  local value="$3"
+
+  local bool_value
+  if [[ "$value" == "true" || "$value" == "1" ]]; then
+    bool_value="true"
+  else
+    bool_value="false"
+  fi
+
+  maw_state_update_agent_config "$agent_id" "$key" "$bool_value"
+  maw_log info "Agent ${agent_id} config updated: ${key}=${bool_value}"
+}
+
 # maw_cmd_menu
 maw_cmd_menu() {
   local lang="${MAW_LANG:-en}"
@@ -410,6 +427,12 @@ main() {
       ;;
     queue-list)
       maw_cmd_queue_list
+      ;;
+    config)
+      if [[ $# -lt 3 ]]; then
+        maw_die "Usage: maw config <agent-id> <key> <value>"
+      fi
+      maw_cmd_config "$1" "$2" "$3"
       ;;
     menu)
       maw_cmd_menu

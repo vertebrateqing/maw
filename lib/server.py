@@ -196,3 +196,23 @@ async def api_log(agent_id: int, lines: int = 50):
         text=True,
     )
     return {"log": result.stdout, "agent_id": agent_id}
+
+
+@app.put("/api/agents/{agent_id}/config")
+async def api_agent_config(agent_id: int, request: Request):
+    """Update agent configuration."""
+    body = await request.json()
+    key = body.get("key", "")
+    value = body.get("value")
+    if not key or value is None:
+        raise HTTPException(status_code=400, detail="key and value are required")
+
+    result = subprocess.run(
+        ["maw", "config", str(agent_id), key, str(value).lower()],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+    return {"status": "updated", "agent_id": agent_id, "key": key, "value": value}
