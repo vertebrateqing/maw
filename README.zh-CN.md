@@ -4,22 +4,22 @@
 
 MAW 让你能够**用 iPhone 远程控制 Claude Code**，并实现多代理并行开发。在独立的 git worktree 中同时运行多个 Claude Code 实例，从手机浏览器监控进度，并将工作合并回主分支。
 
-> **v0.2.0** — 浏览器仪表盘：告别 tmux/Termius，直接用 Safari 访问。
+> **v0.2.1** -- 去中心化架构：所有代理都是平等的。通过浏览器仪表盘输入任务，自动排队，并分发给空闲代理。
 
 > :globe_with_meridians: [English README](README.md)
 
 ## 功能
 
-- :iphone: **iPhone 浏览器控制** — 用 Safari 访问仪表盘，无需安装 App
-- :desktop_computer: **Web 终端** — 完整的 xterm.js 终端，运行主 Claude Code
-- :arrows_counterclockwise: **会话持久化** — systemd 守护进程，断网也不断线
-- :ocean: **流式输出** — 实时查看 Claude Code 的响应
-- :robot: **多代理并行执行** — 将复杂任务拆分给多个 Claude Code 实例
-- :deciduous_tree: **Git Worktree 隔离** — 每个代理在独立分支工作，互不冲突
-- :bar_chart: **实时状态看板** — 在手机上监控所有代理状态
-- :white_check_mark: **代码审查与合并** — GitHub 风格的 diff 查看器，一键批准/拒绝
-- :lock: **默认安全** — Tailscale 网格 VPN + 仅本地绑定
-- :earth_americas: **双语支持** — 英文和中文
+- :iphone: **iPhone 浏览器控制** -- 用 Safari 访问仪表盘，无需安装 App
+- :desktop_computer: **Web 终端** -- 完整的 xterm.js 终端，运行 Claude Code
+- :arrows_counterclockwise: **会话持久化** -- systemd 守护进程，断网也不断线
+- :ocean: **流式输出** -- 实时查看 Claude Code 的响应
+- :robot: **多代理并行执行** -- 将复杂任务拆分给多个 Claude Code 实例
+- :deciduous_tree: **Git Worktree 隔离** -- 每个代理在独立分支工作，互不冲突
+- :bar_chart: **实时状态看板** -- 在手机上监控所有代理状态
+- :white_check_mark: **代码审查与合并** -- GitHub 风格的 diff 查看器，一键批准/拒绝
+- :lock: **默认安全** -- Tailscale 网格 VPN + 仅本地绑定
+- :earth_americas: **双语支持** -- 英文和中文
 
 ## 架构
 
@@ -80,27 +80,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. 配置你的项目
+### 4. 启动 MAW 服务器
 
-进入**你自己的项目目录**（不是 maw 目录）：
+进入**你自己的项目目录**（不是 maw 目录），直接运行：
 
 ```bash
 cd /path/to/your/project
-
-# 确保在 main 分支上
-git checkout main
-
-# 初始化 MAW，创建 4 个代理
-maw init 4
-```
-
-这会创建 4 个代理、git worktree 和 `state.json`。
-
-### 5. 启动 MAW 服务器
-
-```bash
 maw-server
 ```
+
+服务器首次运行会自动初始化，创建 4 个代理、git worktree 和 `state.json`。
 
 或者用 systemd 保持持久运行：
 
@@ -113,42 +102,43 @@ sudo systemctl enable maw
 sudo systemctl start maw
 ```
 
-### 6. 从 iPhone 连接
+### 5. 从 iPhone 连接
 
 1. iPhone 打开 **Tailscale**，连接网络
 2. 打开 **Safari**，访问：`http://100.x.x.x:8080`（你的 WSL2 Tailscale IP）
 3. 你应该看到 MAW 仪表盘：
-   - 左侧：Web 终端（主 Claude Code）
-   - 右侧：代理状态卡片
+   - 左侧：Web 终端（Claude Code）
+   - 右侧：代理状态卡片和消息队列
 
 > :bulb: **技巧**：把页面添加到主屏幕，一键访问（分享 → 添加到主屏幕）
 
-### 7. 日常使用 MAW
+### 6. 日常使用 MAW
 
-**在 Web 终端里**正常和 Claude Code 对话。遇到可并行的复杂任务时：
+**在浏览器仪表盘中输入任务：**
 
-```
-你：请实现用户认证模块，比较复杂，能分配给代理做吗？
-Claude: 我会把任务派发给空闲代理。
-```
-
-Claude 会执行：`maw dispatch "实现用户认证模块"`
-
-MAW 会：
-1. 找一个空闲代理
-2. 在代理的 worktree 里后台运行 `claude`
-3. 将状态更新为 `running`
-4. 把代理输出流式写入日志文件
+1. 在 **消息输入框** 中输入任务描述
+2. 点击 **派发** 发送任务
+3. 如果没有空闲代理，任务会自动进入 **排队队列**
+4. **自动调度器** 会在代理空闲时自动分配排队任务
 
 **查看进度**，在浏览器仪表盘里：
-- 代理卡片实时刷新状态（SSE 推送）
+- 代理卡片实时刷新状态（SSE 推送）：空闲、运行中、待审核
 - 点击 "Kill" 终止运行中的代理
-- 代理完成后，卡片显示 "Review" 状态
+- **消息队列** 显示等待空闲代理的待处理任务
 
 **审查并合并**：
 - 在待审核卡片上点击 "Diff" 查看变更
 - 点击 "Approve & Merge" 将代理分支合并到 main
 - 点击 "Reject" 重置代理的 worktree
+
+### 7. 代理配置
+
+每个空闲代理都有可切换的选项，你可以在仪表盘中设置：
+
+| 开关 | 说明 |
+|------|------|
+| **启动前拉取代码** | 开始工作前自动执行 `git pull origin main` |
+| **完成后自动测试** | 完成工作后自动运行测试（如果测试失败，代理会自动修复 bug） |
 
 ### 8. 断开和重连
 
@@ -161,7 +151,6 @@ MAW 会：
 | 命令 | 说明 |
 |------|------|
 | `maw init [N]` | 初始化 N 个代理（默认 4） |
-| `maw dispatch "<任务>" [id]` | 派发任务给空闲代理（或指定 id） |
 | `maw status` | 显示状态看板（单次） |
 | `maw watch` | 持续刷新状态看板 |
 | `maw review-request <id>` | 标记代理为待审核 |
@@ -205,7 +194,7 @@ bash tests/run_all.sh
 ## 常见问题
 
 ### "No idle agents available"
-所有代理都在忙。等一个完成，或执行 `maw status` 查看状态。
+所有代理都在忙。任务会自动排队，并在代理空闲时自动分发。
 
 ### iPhone 无法访问服务器
 - 检查 Tailscale 两端都已连接：`sudo tailscale status`

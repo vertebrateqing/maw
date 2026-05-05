@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Terminal } from "./Terminal";
 import { AgentCard } from "./AgentCard";
 import { DiffViewer } from "./DiffViewer";
+import { MessageInput } from "./MessageInput";
+import { MessageQueue } from "./MessageQueue";
 import { useApi } from "@/hooks/useApi";
 
 export function Layout() {
-  const { state, fetchDiff, approve, reject, kill } = useApi();
+  const { state, error, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage, updateAgentConfig } = useApi();
   const [diffData, setDiffData] = useState<{ id: number; text: string } | null>(null);
 
   const handleViewDiff = async (id: number) => {
@@ -19,21 +20,22 @@ export function Layout() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-[#d4d4d4]">MAW</span>
           <span className="text-xs text-green-400">● Online</span>
+          {error && <span className="text-xs text-red-400">({error})</span>}
         </div>
         <div className="text-xs text-[#858585]">
-          {state?.agents?.length || 0} agents | {" "}
-          {state?.agents?.filter((a) => a.status === "running").length || 0} running | {" "}
-          {state?.agents?.filter((a) => a.status === "pending_review").length || 0} review
+          {state?.agents?.length || 0} agents |{" "}
+          {state?.agents?.filter((a) => a.status === "running").length || 0} running |{" "}
+          {state?.agents?.filter((a) => a.status === "pending_review").length || 0} review |{" "}
+          {state?.pending_messages?.length || 0} queued
         </div>
       </header>
 
+      <MessageInput onSubmit={addMessage} />
+
       <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 min-w-0 p-3">
-          <Terminal />
-        </div>
-        <div className="w-80 border-l border-[#3c3c3c] p-3 overflow-y-auto">
+        <div className="flex-1 min-w-0 p-3 overflow-y-auto">
           <h2 className="text-xs font-bold text-[#858585] uppercase mb-3">Agents</h2>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {state?.agents?.map((agent) => (
               <AgentCard
                 key={agent.id}
@@ -42,9 +44,18 @@ export function Layout() {
                 onApprove={approve}
                 onReject={reject}
                 onKill={kill}
+                onUpdateConfig={updateAgentConfig}
               />
             ))}
           </div>
+        </div>
+        <div className="w-72 border-l border-[#3c3c3c] p-3 overflow-y-auto">
+          <h2 className="text-xs font-bold text-[#858585] uppercase mb-3">消息队列</h2>
+          <MessageQueue
+            messages={state?.pending_messages || []}
+            onUpdate={updateMessage}
+            onDelete={deleteMessage}
+          />
         </div>
       </div>
 

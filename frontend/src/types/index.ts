@@ -1,3 +1,8 @@
+export interface AgentConfig {
+  auto_pull: boolean;
+  auto_test: boolean;
+}
+
 export interface Agent {
   id: number;
   worktree: string;
@@ -7,12 +12,21 @@ export interface Agent {
   pid: number | null;
   started_at: string | null;
   completed_at: string | null;
+  config: AgentConfig;
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  created_at: string;
+  priority: number;
 }
 
 export interface MawState {
   version: string;
   project: string;
   agents: Agent[];
+  pending_messages: Message[];
   created_at: string;
 }
 

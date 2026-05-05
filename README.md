@@ -4,14 +4,14 @@
 
 MAW enables **remote iPhone control of Claude Code** with parallel multi-agent development. Run multiple Claude Code instances simultaneously in isolated git worktrees, monitor their progress from your phone's browser, and merge their work back into your main branch.
 
-> **v0.2.0** -- Browser Dashboard: No more tmux/Termius. Access your agents via Safari.
+> **v0.2.1** -- Decentralized Architecture: All agents are equal. Tasks are entered via the browser dashboard, queued automatically, and dispatched to idle agents.
 
 > :globe_with_meridians: [中文文档](README.zh-CN.md)
 
 ## Features
 
 - :iphone: **iPhone Browser Control** -- Access dashboard from Safari, no app needed
-- :desktop_computer: **Web Terminal** -- Full xterm.js terminal for master Claude Code
+- :desktop_computer: **Web Terminal** -- Full xterm.js terminal for Claude Code
 - :arrows_counterclockwise: **Session Persistence** -- systemd keeps the daemon alive across disconnects
 - :ocean: **Streaming Output** -- Real-time visibility into Claude Code responses
 - :robot: **Multi-Agent Parallel Execution** -- Split complex tasks across multiple Claude Code instances
@@ -80,27 +80,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Set Up Your Project
+### 4. Start the MAW Server
 
-Navigate to **your project's git repository** (not the maw directory):
+Navigate to **your project's git repository** (not the maw directory) and run:
 
 ```bash
 cd /path/to/your/project
-
-# Make sure you're on main branch
-git checkout main
-
-# Initialize MAW with 4 agents
-maw init 4
-```
-
-This creates 4 agents with git worktrees and a `state.json` file.
-
-### 5. Start the MAW Server
-
-```bash
 maw-server
 ```
+
+The server auto-initializes on first run, creating 4 agents with git worktrees and a `state.json` file.
 
 Or run with systemd for persistence:
 
@@ -113,42 +102,43 @@ sudo systemctl enable maw
 sudo systemctl start maw
 ```
 
-### 6. Connect from iPhone
+### 5. Connect from iPhone
 
 1. Open **Tailscale** app on iPhone, connect to your network
 2. Open **Safari**, navigate to: `http://100.x.x.x:8080` (your WSL2 Tailscale IP)
 3. You should see the MAW dashboard with:
-   - Left pane: Web terminal (master Claude Code)
-   - Right pane: Agent status cards
+   - Left pane: Web terminal (Claude Code)
+   - Right pane: Agent status cards and message queue
 
 > :bulb: **Tip**: Add the page to your Home Screen for quick access (Share → Add to Home Screen)
 
-### 7. Using MAW (Day-to-Day Workflow)
+### 6. Using MAW (Day-to-Day Workflow)
 
-**In the web terminal**, talk to Claude Code normally. When you have a complex task that can be parallelized:
+**Enter tasks in the browser dashboard:**
 
-```
-You: Please implement user authentication. It's complex, can you delegate it?
-Claude: I'll dispatch this to an available agent.
-```
-
-Claude will run: `maw dispatch "Implement user authentication"`
-
-MAW will:
-1. Find an idle agent
-2. Run `claude` in the agent's worktree as a background process
-3. Update the state to `running`
-4. Stream the agent's output to a log file
+1. Type your task description in the **Message Input** box
+2. Click **Dispatch** to send the task
+3. If no agents are idle, the task is automatically **queued**
+4. The **auto-dispatcher** assigns queued tasks as agents become idle
 
 **Monitor progress** in the browser dashboard:
-- Agent cards show real-time status (SSE updates)
+- Agent cards show real-time status (SSE updates): idle, running, or pending_review
 - Tap "Kill" to stop a running agent
-- When an agent completes, its card shows "Review" status
+- The **Message Queue** shows pending tasks waiting for an idle agent
 
 **Review and merge**:
 - Tap "Diff" on a pending-review card to see changes
 - Tap "Approve & Merge" to merge the agent's branch into main
 - Tap "Reject" to reset the agent's worktree
+
+### 7. Agent Configuration
+
+Each idle agent has toggle options you can set from the dashboard:
+
+| Toggle | Description |
+|--------|-------------|
+| **Auto Pull** | Auto `git pull origin main` before starting work |
+| **Auto Test** | Auto run tests after completing work (agent fixes bugs if tests fail) |
 
 ### 8. Disconnect and Reconnect
 
@@ -161,7 +151,6 @@ MAW will:
 | Command | Description |
 |---------|-------------|
 | `maw init [N]` | Initialize with N agents (default: 4) |
-| `maw dispatch "<task>" [id]` | Send task to idle agent (or specific id) |
 | `maw status` | Show status board (one-shot) |
 | `maw watch` | Continuously refresh status board |
 | `maw review-request <id>` | Mark agent as pending review |
@@ -205,7 +194,7 @@ bash tests/run_all.sh
 ## Troubleshooting
 
 ### "No idle agents available"
-All agents are busy. Wait for one to finish, or run `maw status` to check.
+All agents are busy. Tasks are automatically queued and dispatched when an agent becomes idle.
 
 ### Server not reachable from iPhone
 - Check Tailscale is connected on both sides: `sudo tailscale status`
