@@ -132,3 +132,18 @@ maw_state_agent_count() {
   state_file="$(maw_state_file)"
   jq '.agents | length' "$state_file"
 }
+
+# maw_state_review_request <id>
+maw_state_review_request() {
+  local id="$1"
+  local state_file
+  state_file="$(maw_state_file)"
+  local timestamp
+  timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  jq --argjson id "$id" --arg ts "$timestamp" \
+     '.agents |= map(if .id == $id then .status = "pending_review" | .completed_at = $ts | .pid = null else . end)' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
+  maw_log info "Agent ${id} marked for review"
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MAW_VERSION="0.1.0"
+MAW_VERSION="0.2.0"
 MAW_DIR="${MAW_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 # Source libraries
@@ -19,16 +19,20 @@ maw_help() {
 用法: maw <命令> [选项]
 
 命令:
-  init [N]          初始化 MAW，创建 N 个代理 (默认 4)
-  dispatch <任务>   派发任务到空闲代理
-  status            显示状态看板
-  watch             持续刷新状态看板
-  merge <id>        合并代理分支到 main
-  reset <id>        重置代理到 main
-  kill <id>         终止代理进程
-  menu              交互式菜单
-  help              显示帮助信息
-  version           显示版本
+  init [N]              初始化 MAW，创建 N 个代理 (默认 4)
+  dispatch <任务> [id]  派发任务到空闲代理
+  status                显示状态看板
+  watch                 持续刷新状态看板
+  review-request <id>   标记代理为待审核
+  approve <id>          审核通过并合并到 main
+  reject <id>           拒绝并重置代理
+  diff <id>             查看代理的 git diff
+  merge <id>            合并代理分支到 main
+  reset <id>            重置代理到 main
+  kill <id>             终止代理进程
+  menu                  交互式菜单
+  help                  显示帮助信息
+  version               显示版本
 
 环境变量:
   MAW_LANG          语言: en | zh (默认: en)
@@ -38,23 +42,28 @@ maw_help() {
   maw init 6
   maw dispatch "重构认证模块"
   maw status
-  maw merge 2
+  maw diff 2
+  maw approve 2
 HELP
   else
     cat << 'HELP'
 Usage: maw <command> [options]
 
 Commands:
-  init [N]          Initialize MAW with N agents (default: 4)
-  dispatch <task>   Dispatch task to an idle agent
-  status            Show status board
-  watch             Continuously refresh status board
-  merge <id>        Merge agent branch into main
-  reset <id>        Reset agent to main
-  kill <id>         Kill agent process
-  menu              Interactive menu
-  help              Show this help message
-  version           Show version
+  init [N]              Initialize MAW with N agents (default: 4)
+  dispatch <task> [id]  Dispatch task to an idle agent
+  status                Show status board
+  watch                 Continuously refresh status board
+  review-request <id>   Mark agent as pending review
+  approve <id>          Approve and merge agent into main
+  reject <id>           Reject and reset agent
+  diff <id>             Show agent git diff
+  merge <id>            Merge agent branch into main
+  reset <id>            Reset agent to main
+  kill <id>             Kill agent process
+  menu                  Interactive menu
+  help                  Show this help message
+  version               Show version
 
 Environment:
   MAW_LANG          Language: en | zh (default: en)
@@ -64,7 +73,8 @@ Examples:
   maw init 6
   maw dispatch "Refactor auth module"
   maw status
-  maw merge 2
+  maw diff 2
+  maw approve 2
 HELP
   fi
 }
@@ -107,28 +117,22 @@ maw_cmd_dispatch() {
   fi
 
   local worktree="${root}/.agents/agent-${agent_id}"
+  local log_file="${root}/.maw/logs/agent-${agent_id}.log"
+  maw_ensure_dir "$(dirname "$log_file")"
 
-  # Update state
-  local pid
   maw_state_update_agent "$agent_id" "running" "$task"
 
-  # Start claude in the worktree via tmux
-  # Note: This assumes we're already inside a tmux session
-  if [[ -n "${TMUX:-}" ]]; then
-    local window_name="agent-${agent_id}"
-    tmux new-window -n "$window_name" -c "$worktree" \
-      "claude '${task}'; maw_state_update_agent ${agent_id} done; bash"
+  # Run claude in background, then mark review-request on completion
+  (
+    cd "$worktree" || exit 1
+    claude "$task"
+    maw review-request "$agent_id"
+  ) > "$log_file" 2>&1 &
 
-    # Get PID of the tmux window's process (approximate)
-    pid=$(tmux list-panes -t "$window_name" -F '#{pane_pid}' 2>/dev/null | head -n1)
-    if [[ -n "$pid" ]]; then
-      maw_state_update_agent "$agent_id" "running" "$task" "$pid"
-    fi
+  local pid=$!
+  maw_state_update_agent "$agent_id" "running" "$task" "$pid"
 
-    maw_log info "Dispatched task to agent-${agent_id} in tmux window: ${window_name}"
-  else
-    maw_die "Not running inside tmux. Please start tmux first."
-  fi
+  maw_log info "Dispatched task to agent-${agent_id} (PID: ${pid})"
 }
 
 # maw_cmd_status
@@ -187,10 +191,38 @@ maw_cmd_kill() {
     maw_log info "Killed agent ${agent_id} (PID: ${pid})"
   fi
 
-  # Also kill the tmux window if it exists
-  tmux kill-window -t "agent-${agent_id}" 2>/dev/null || true
-
   maw_state_update_agent "$agent_id" "idle" ""
+}
+
+# maw_cmd_review_request <agent_id>
+maw_cmd_review_request() {
+  local agent_id="$1"
+  maw_state_review_request "$agent_id"
+}
+
+# maw_cmd_approve <agent_id>
+maw_cmd_approve() {
+  local agent_id="$1"
+  if maw_git_merge_agent "$agent_id"; then
+    maw_state_update_agent "$agent_id" "idle" ""
+    maw_log info "Agent ${agent_id} approved and merged"
+  fi
+}
+
+# maw_cmd_reject <agent_id>
+maw_cmd_reject() {
+  local agent_id="$1"
+  maw_git_worktree_reset "$agent_id"
+  maw_state_update_agent "$agent_id" "idle" ""
+  maw_log info "Agent ${agent_id} rejected and reset"
+}
+
+# maw_cmd_diff <agent_id>
+maw_cmd_diff() {
+  local agent_id="$1"
+  local root
+  root="$(maw_project_root)"
+  git -C "$root" diff "main...agent/${agent_id}"
 }
 
 # maw_cmd_menu
@@ -304,6 +336,30 @@ main() {
         maw_die "Usage: maw kill <agent-id>"
       fi
       maw_cmd_kill "$1"
+      ;;
+    review-request)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw review-request <agent-id>"
+      fi
+      maw_cmd_review_request "$1"
+      ;;
+    approve)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw approve <agent-id>"
+      fi
+      maw_cmd_approve "$1"
+      ;;
+    reject)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw reject <agent-id>"
+      fi
+      maw_cmd_reject "$1"
+      ;;
+    diff)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw diff <agent-id>"
+      fi
+      maw_cmd_diff "$1"
       ;;
     menu)
       maw_cmd_menu
