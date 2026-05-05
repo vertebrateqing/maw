@@ -225,6 +225,35 @@ maw_cmd_diff() {
   git -C "$root" diff "main...agent/${agent_id}"
 }
 
+# maw_cmd_queue <content>
+maw_cmd_queue() {
+  local content="$1"
+  local msg_id
+  msg_id=$(maw_state_add_message "$content")
+  echo "$msg_id"
+  maw_log info "Message queued: ${msg_id}"
+}
+
+# maw_cmd_queue_update <id> <content>
+maw_cmd_queue_update() {
+  local id="$1"
+  local content="$2"
+  maw_state_update_message "$id" "$content"
+  maw_log info "Message updated: ${id}"
+}
+
+# maw_cmd_queue_remove <id>
+maw_cmd_queue_remove() {
+  local id="$1"
+  maw_state_remove_message "$id"
+  maw_log info "Message removed: ${id}"
+}
+
+# maw_cmd_queue_list
+maw_cmd_queue_list() {
+  maw_state_list_messages
+}
+
 # maw_cmd_menu
 maw_cmd_menu() {
   local lang="${MAW_LANG:-en}"
@@ -360,6 +389,27 @@ main() {
         maw_die "Usage: maw diff <agent-id>"
       fi
       maw_cmd_diff "$1"
+      ;;
+    queue)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw queue <content>"
+      fi
+      maw_cmd_queue "$1"
+      ;;
+    queue-update)
+      if [[ $# -lt 2 ]]; then
+        maw_die "Usage: maw queue-update <id> <content>"
+      fi
+      maw_cmd_queue_update "$1" "$2"
+      ;;
+    queue-remove)
+      if [[ $# -lt 1 ]]; then
+        maw_die "Usage: maw queue-remove <id>"
+      fi
+      maw_cmd_queue_remove "$1"
+      ;;
+    queue-list)
+      maw_cmd_queue_list
       ;;
     menu)
       maw_cmd_menu

@@ -4,7 +4,6 @@ set -euo pipefail
 # MAW Server - FastAPI daemon launcher
 
 MAW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$MAW_DIR"
 
 # Activate virtualenv if it exists
 if [[ -d "$MAW_DIR/.venv" ]]; then
@@ -14,5 +13,24 @@ fi
 # Ensure maw is in PATH
 export PATH="$MAW_DIR/bin:$PATH"
 
-# Start uvicorn
+# Allow uvicorn to import lib.server from the maw installation dir
+export PYTHONPATH="${MAW_DIR}:${PYTHONPATH:-}"
+
+# Auto-initialize project if needed
+# Check if we're in a git repo
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  echo "[MAW] Error: Not a git repository. Please run in a git project directory."
+  exit 1
+fi
+
+# Check if state.json exists, if not auto-init
+if [[ ! -f ".maw/state.json" ]]; then
+  echo "[MAW] Auto-initializing MAW with 4 agents..."
+  maw init 4
+elif [[ "$(maw status 2>/dev/null | grep -c 'ID')" == "0" ]]; then
+  echo "[MAW] Auto-initializing MAW with 4 agents..."
+  maw init 4
+fi
+
+# Start uvicorn (stay in project directory so server.py sees cwd as project root)
 exec uvicorn lib.server:app --host 0.0.0.0 --port "${MAW_PORT:-8080}" --reload

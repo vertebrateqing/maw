@@ -29,6 +29,7 @@ maw_state_init() {
   "version": "1.0",
   "project": "",
   "agents": [],
+  "pending_messages": [],
   "created_at": ""
 }
 JSON
@@ -146,4 +147,76 @@ maw_state_review_request() {
      "$state_file" > "${state_file}.tmp"
   mv "${state_file}.tmp" "$state_file"
   maw_log info "Agent ${id} marked for review"
+}
+
+# --- Message Queue ---
+
+# maw_state_add_message <content>
+maw_state_add_message() {
+  local content="$1"
+  local state_file
+  state_file="$(maw_state_file)"
+  local timestamp
+  timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local msg_id
+  msg_id="msg-$(date +%s%N)"
+
+  jq --arg id "$msg_id" \
+     --arg content "$content" \
+     --arg ts "$timestamp" \
+     '.pending_messages += [{"id": $id, "content": $content, "created_at": $ts, "priority": 0}]' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
+  echo "$msg_id"
+}
+
+# maw_state_remove_message <id>
+maw_state_remove_message() {
+  local id="$1"
+  local state_file
+  state_file="$(maw_state_file)"
+
+  jq --arg id "$id" \
+     '.pending_messages |= map(select(.id != $id))' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
+}
+
+# maw_state_update_message <id> <content>
+maw_state_update_message() {
+  local id="$1"
+  local content="$2"
+  local state_file
+  state_file="$(maw_state_file)"
+
+  jq --arg id "$id" --arg content "$content" \
+     '.pending_messages |= map(if .id == $id then .content = $content else . end)' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
+}
+
+# maw_state_list_messages
+maw_state_list_messages() {
+  local state_file
+  state_file="$(maw_state_file)"
+  jq '.pending_messages' "$state_file"
+}
+
+# maw_state_shift_message - removes and returns the first message
+maw_state_shift_message() {
+  local state_file
+  state_file="$(maw_state_file)"
+  local msg
+  msg=$(jq '.pending_messages | first' "$state_file")
+  if [[ "$msg" == "null" ]]; then
+    echo ""
+    return
+  fi
+  local msg_id
+  msg_id=$(echo "$msg" | jq -r '.id')
+  jq --arg id "$msg_id" \
+     '.pending_messages |= map(select(.id != $id))' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
+  echo "$msg"
 }

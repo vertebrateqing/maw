@@ -14,8 +14,8 @@ from lib.pty_bridge import PtyBridge
 from lib.sse_broadcaster import StateBroadcaster
 from lib.agent_runner import run_agent, kill_agent
 
-MAW_DIR = Path(__file__).parent.parent.resolve()
-STATIC_DIR = MAW_DIR / "static"
+MAW_DIR = Path(os.getcwd())
+STATIC_DIR = Path(__file__).parent.parent.resolve() / "static"
 
 app = FastAPI(title="MAW Server", version="0.2.0")
 
@@ -54,9 +54,72 @@ async def root():
 async def api_status():
     state_file = MAW_DIR / ".maw" / "state.json"
     if not state_file.exists():
-        return {"agents": []}
+        return {"agents": [], "pending_messages": []}
     with open(state_file) as f:
         return json.load(f)
+
+
+@app.get("/api/messages")
+async def api_messages():
+    """Get all pending messages."""
+    state_file = MAW_DIR / ".maw" / "state.json"
+    if not state_file.exists():
+        return []
+    with open(state_file) as f:
+        data = json.load(f)
+    return data.get("pending_messages", [])
+
+
+@app.post("/api/messages")
+async def api_messages_create(request: Request):
+    """Add a new message to the queue."""
+    body = await request.json()
+    content = body.get("content", "")
+    if not content:
+        raise HTTPException(status_code=400, detail="content is required")
+
+    result = subprocess.run(
+        ["maw", "queue", content],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+    return {"status": "queued", "id": result.stdout.strip()}
+
+
+@app.put("/api/messages/{msg_id}")
+async def api_messages_update(msg_id: str, request: Request):
+    """Update a pending message."""
+    body = await request.json()
+    content = body.get("content", "")
+    if not content:
+        raise HTTPException(status_code=400, detail="content is required")
+
+    result = subprocess.run(
+        ["maw", "queue-update", msg_id, content],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+    return {"status": "updated", "id": msg_id}
+
+
+@app.delete("/api/messages/{msg_id}")
+async def api_messages_delete(msg_id: str):
+    """Delete a pending message."""
+    result = subprocess.run(
+        ["maw", "queue-remove", msg_id],
+        capture_output=True,
+        text=True,
+        cwd=os.getcwd(),
+    )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
+    return {"status": "deleted", "id": msg_id}
 
 
 @app.websocket("/ws/master")
