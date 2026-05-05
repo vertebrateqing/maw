@@ -1,5 +1,7 @@
+import { Layout } from "./components/Layout";
+
 function App() {
-  return <div className="text-white">MAW Dashboard</div>;
+  return <Layout />;
 }
 
 export default App;
