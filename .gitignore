@@ -6,6 +6,16 @@
 # Worktrees
 .worktrees/
 
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
 # Test artifacts
 *.tmp
 *.log
+get-pip.py
