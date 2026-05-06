@@ -19,6 +19,11 @@ export function Layout() {
       <header className="flex items-center justify-between px-4 py-2 bg-[#1e1e1e] border-b border-[#3c3c3c]">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-[#d4d4d4]">MAW</span>
+          {state?.cwd && (
+            <span className="text-xs text-[#858585] font-mono truncate max-w-[200px]" title={state.cwd}>
+              {state.cwd}
+            </span>
+          )}
           <span className="text-xs text-green-400">● Online</span>
           {error && <span className="text-xs text-red-400">({error})</span>}
         </div>

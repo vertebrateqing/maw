@@ -28,6 +28,7 @@ export interface MawState {
   agents: Agent[];
   pending_messages: Message[];
   created_at: string;
+  cwd: string;
 }
 
 export interface DiffResponse {

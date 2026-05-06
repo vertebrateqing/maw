@@ -22,6 +22,15 @@ class StateBroadcaster:
 
     def start(self):
         self._running = True
+        # Do an initial sync read so last_content is available immediately
+        try:
+            if self.state_file.exists():
+                self.last_mtime = self.state_file.stat().st_mtime
+                with open(self.state_file) as f:
+                    self.last_content = json.load(f)
+                print(f"[MAW-Broadcast] Initial state loaded: {len(self.last_content.get('agents', []))} agents, {len(self.last_content.get('pending_messages', []))} messages")
+        except Exception as e:
+            print(f"[MAW-Broadcast] Initial read failed: {e}")
         self._thread = threading.Thread(target=self._watch_loop, daemon=True)
         self._thread.start()
 
@@ -36,13 +45,14 @@ class StateBroadcaster:
                             content = json.load(f)
                         if content != self.last_content:
                             self.last_content = content
+                            print(f"[MAW-Broadcast] state.json changed, broadcasting to {len(self.clients)} clients")
                             for client in self.clients:
                                 try:
                                     client(content)
                                 except Exception:
                                     pass
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[MAW-Broadcast] watch error: {e}")
             time.sleep(1)
 
     def add_client(self, callback: Callable):
@@ -63,11 +73,13 @@ class StateBroadcaster:
         if self.last_content:
             queue.append(self.last_content)
         try:
+            print(f"[MAW-Broadcast] SSE client connected, queue size: {len(queue)}")
             while not await request.is_disconnected():
                 if queue:
                     data = queue.pop(0)
-                    yield {"event": "state", "data": json.dumps(data)}
+                    yield {"data": json.dumps(data)}
                 else:
                     await asyncio.sleep(0.5)
         finally:
+            print("[MAW-Broadcast] SSE client disconnected")
             self.remove_client(callback)

@@ -14,7 +14,19 @@ from lib.sse_broadcaster import StateBroadcaster
 from lib.agent_runner import run_agent, kill_agent
 from lib.auto_dispatcher import AutoDispatcher
 
-MAW_DIR = Path(os.getcwd())
+def _get_project_root() -> Path:
+    """Find git project root using git rev-parse."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return Path(result.stdout.strip())
+    return Path(os.getcwd())
+
+
+MAW_DIR = _get_project_root()
 STATIC_DIR = Path(__file__).parent.parent.resolve() / "static"
 
 app = FastAPI(title="MAW Server", version="0.2.1")
@@ -25,7 +37,7 @@ _dispatcher = None
 def get_dispatcher():
     global _dispatcher
     if _dispatcher is None:
-        _dispatcher = AutoDispatcher(os.getcwd())
+        _dispatcher = AutoDispatcher(str(MAW_DIR))
         _dispatcher.start()
     return _dispatcher
 
@@ -58,9 +70,11 @@ async def root():
 async def api_status():
     state_file = MAW_DIR / ".maw" / "state.json"
     if not state_file.exists():
-        return {"agents": [], "pending_messages": []}
+        return {"agents": [], "pending_messages": [], "cwd": str(MAW_DIR)}
     with open(state_file) as f:
-        return json.load(f)
+        data = json.load(f)
+    data["cwd"] = str(MAW_DIR)
+    return data
 
 
 @app.get("/api/messages")
@@ -82,14 +96,17 @@ async def api_messages_create(request: Request):
     if not content:
         raise HTTPException(status_code=400, detail="content is required")
 
+    print(f"[MAW-API] Queueing message: {content[:50]}...")
     result = subprocess.run(
         ["maw", "queue", content],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     if result.returncode != 0:
+        print(f"[MAW-API] Queue failed: {result.stderr}")
         raise HTTPException(status_code=500, detail=result.stderr)
+    print(f"[MAW-API] Message queued: {result.stdout.strip()}")
     return {"status": "queued", "id": result.stdout.strip()}
 
 
@@ -105,7 +122,7 @@ async def api_messages_update(msg_id: str, request: Request):
         ["maw", "queue-update", msg_id, content],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr)
@@ -119,7 +136,7 @@ async def api_messages_delete(msg_id: str):
         ["maw", "queue-remove", msg_id],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr)
@@ -146,7 +163,7 @@ async def api_diff(agent_id: int):
         ["git", "diff", f"main...agent/{agent_id}"],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     return {"diff": result.stdout, "agent_id": agent_id}
 
@@ -158,7 +175,7 @@ async def api_approve(agent_id: int):
         ["maw", "approve", str(agent_id)],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     if result.returncode != 0:
         raise HTTPException(status_code=400, detail=result.stderr)
@@ -172,7 +189,7 @@ async def api_reject(agent_id: int):
         ["maw", "reject", str(agent_id)],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     return {"status": "rejected", "agent_id": agent_id}
 
@@ -211,7 +228,7 @@ async def api_agent_config(agent_id: int, request: Request):
         ["maw", "config", str(agent_id), key, str(value).lower()],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(MAW_DIR),
     )
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=result.stderr)
