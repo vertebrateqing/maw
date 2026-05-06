@@ -15,19 +15,25 @@ from lib.agent_runner import run_agent, kill_agent
 from lib.auto_dispatcher import AutoDispatcher
 
 def _get_project_root() -> Path:
-    """Find git project root using git rev-parse."""
+    """Find git project root using git rev-parse from this file's directory."""
     result = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
+        cwd=str(Path(__file__).parent),
     )
     if result.returncode == 0:
         return Path(result.stdout.strip())
-    return Path(os.getcwd())
+    return Path(__file__).parent.parent.resolve()
 
 
 MAW_DIR = _get_project_root()
-STATIC_DIR = Path(__file__).parent.parent.resolve() / "static"
+STATIC_DIR = MAW_DIR / "static"
+
+# Ensure maw CLI is discoverable by subprocess calls
+_maw_bin_dir = str(MAW_DIR / "bin")
+if _maw_bin_dir not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _maw_bin_dir + os.pathsep + os.environ.get("PATH", "")
 
 app = FastAPI(title="MAW Server", version="0.2.1")
 
@@ -98,7 +104,7 @@ async def api_messages_create(request: Request):
 
     print(f"[MAW-API] Queueing message: {content[:50]}...")
     result = subprocess.run(
-        [str(MAW_DIR / "bin" / "maw"), "queue", content],
+        ["maw", "queue", content],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
