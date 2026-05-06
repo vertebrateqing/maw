@@ -28,10 +28,11 @@ def _get_project_root() -> Path:
 
 
 MAW_DIR = _get_project_root()
-STATIC_DIR = MAW_DIR / "static"
+MAW_INSTALL_DIR = Path(__file__).parent.parent.resolve()
+STATIC_DIR = MAW_INSTALL_DIR / "static"
 
 # Ensure maw CLI is discoverable by subprocess calls
-_maw_bin_dir = str(MAW_DIR / "bin")
+_maw_bin_dir = str(MAW_INSTALL_DIR / "bin")
 if _maw_bin_dir not in os.environ.get("PATH", ""):
     os.environ["PATH"] = _maw_bin_dir + os.pathsep + os.environ.get("PATH", "")
 
@@ -125,7 +126,7 @@ async def api_messages_update(msg_id: str, request: Request):
         raise HTTPException(status_code=400, detail="content is required")
 
     result = subprocess.run(
-        [str(MAW_DIR / "bin" / "maw"), "queue-update", msg_id, content],
+        [str(MAW_INSTALL_DIR / "bin" / "maw"), "queue-update", msg_id, content],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -139,7 +140,7 @@ async def api_messages_update(msg_id: str, request: Request):
 async def api_messages_delete(msg_id: str):
     """Delete a pending message."""
     result = subprocess.run(
-        [str(MAW_DIR / "bin" / "maw"), "queue-remove", msg_id],
+        [str(MAW_INSTALL_DIR / "bin" / "maw"), "queue-remove", msg_id],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -158,7 +159,7 @@ async def api_events(request: Request):
 @app.post("/api/dispatch")
 async def api_dispatch(agent_id: int, task: str):
     """Dispatch a task to an agent."""
-    proc = run_agent(agent_id, task, str(os.getcwd()))
+    proc = run_agent(agent_id, task, str(MAW_DIR))
     return {"status": "dispatched", "agent_id": agent_id, "pid": proc.pid}
 
 
@@ -178,7 +179,7 @@ async def api_diff(agent_id: int):
 async def api_approve(agent_id: int):
     """Approve and merge an agent."""
     result = subprocess.run(
-        [str(MAW_DIR / "bin" / "maw"), "approve", str(agent_id)],
+        [str(MAW_INSTALL_DIR / "bin" / "maw"), "approve", str(agent_id)],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -192,7 +193,7 @@ async def api_approve(agent_id: int):
 async def api_reject(agent_id: int):
     """Reject an agent."""
     result = subprocess.run(
-        [str(MAW_DIR / "bin" / "maw"), "reject", str(agent_id)],
+        [str(MAW_INSTALL_DIR / "bin" / "maw"), "reject", str(agent_id)],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -231,7 +232,7 @@ async def api_agent_config(agent_id: int, request: Request):
         raise HTTPException(status_code=400, detail="key and value are required")
 
     result = subprocess.run(
-        [str(MAW_DIR / "bin" / "maw"), "config", str(agent_id), key, str(value).lower()],
+        [str(MAW_INSTALL_DIR / "bin" / "maw"), "config", str(agent_id), key, str(value).lower()],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
