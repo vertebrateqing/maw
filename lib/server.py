@@ -15,16 +15,16 @@ from lib.agent_runner import run_agent, kill_agent
 from lib.auto_dispatcher import AutoDispatcher
 
 def _get_project_root() -> Path:
-    """Find git project root using git rev-parse from this file's directory."""
+    """Find git project root of the current working directory."""
     result = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
-        cwd=str(Path(__file__).parent),
+        cwd=os.getcwd(),
     )
     if result.returncode == 0:
         return Path(result.stdout.strip())
-    return Path(__file__).parent.parent.resolve()
+    return Path(os.getcwd()).resolve()
 
 
 MAW_DIR = _get_project_root()
