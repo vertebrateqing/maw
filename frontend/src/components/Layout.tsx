@@ -6,7 +6,7 @@ import { MessageQueue } from "./MessageQueue";
 import { useApi } from "@/hooks/useApi";
 
 export function Layout() {
-  const { state, error, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage, updateAgentConfig } = useApi();
+  const { state, error, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage } = useApi();
   const [diffData, setDiffData] = useState<{ id: number; text: string } | null>(null);
 
   const handleViewDiff = async (id: number) => {
@@ -44,7 +44,6 @@ export function Layout() {
                 onApprove={approve}
                 onReject={reject}
                 onKill={kill}
-                onUpdateConfig={updateAgentConfig}
               />
             ))}
           </div>

@@ -122,11 +122,53 @@ maw_cmd_dispatch() {
 
   maw_state_update_agent "$agent_id" "running" "$task"
 
-  # Run claude in background, then mark review-request on completion
+  # Build enhanced prompt with embedded workflow rules
+  local enhanced_task
+  enhanced_task=$(cat <<PROMPT
+【MAW Agent 自治工作流 - 严格执行】
+
+你当前在 worktree ${worktree} 中，分支为 agent/${agent_id}，项目根目录为 ${root}。
+
+请严格按照以下顺序执行，不要跳过任何步骤：
+
+=== 阶段一：同步代码（编码前必须执行） ===
+1. 执行 git fetch origin main
+2. 执行 git rebase origin/main
+   - 如有冲突，分析原因并解决，然后 git rebase --continue
+   - 完成后 git status 确认工作区干净
+3. 确认无误后再开始编码
+
+=== 阶段二：完成任务 ===
+${task}
+
+=== 阶段三：提交与测试 ===
+4. 编码完成后执行 git add -A && git commit -m "feat: <任务简述>"
+5. 运行项目测试：
+   - 若存在 package.json → npm test
+   - 若存在 Cargo.toml → cargo test
+   - 若存在 go.mod → go test ./...
+   - 若存在 tests/ 或 pytest.ini → pytest
+   - 否则尝试 python3 -m unittest discover
+6. 如果测试失败：
+   - 分析失败原因，修复代码，重新 commit，再次测试
+   - 重复直到全部通过
+
+=== 阶段四：合入主干 ===
+7. 再次执行 git fetch origin main && git rebase origin/main
+8. 切换到项目根目录：cd ${root}
+9. 执行 git merge agent/${agent_id} --no-edit
+   - 如有冲突，解决后重新执行
+10. 重置 worktree：maw reset ${agent_id}
+11. 输入 exit 正常退出
+
+注意：每个 git 操作后建议用 git status 确认状态。
+PROMPT
+)
+
+  # Run claude in background with the enhanced prompt
   (
     cd "$worktree" || exit 1
-    claude "$task"
-    maw review-request "$agent_id"
+    claude "$enhanced_task"
   ) > "$log_file" 2>&1 &
 
   local pid=$!

@@ -7,7 +7,6 @@ interface AgentCardProps {
   onApprove: (id: number) => void;
   onReject: (id: number) => void;
   onKill: (id: number) => void;
-  onUpdateConfig?: (id: number, key: string, value: boolean) => void;
 }
 
 function StatusBadge({ status }: { status: Agent["status"] }) {
@@ -38,7 +37,7 @@ function formatElapsed(startedAt: string | null) {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function AgentCard({ agent, onViewDiff, onApprove, onReject, onKill, onUpdateConfig }: AgentCardProps) {
+export function AgentCard({ agent, onViewDiff, onApprove, onReject, onKill }: AgentCardProps) {
   return (
     <div className={`bg-[#252526] rounded-lg border p-3 ${
       agent.status === "pending_review" ? "border-yellow-700" : "border-[#3c3c3c]"
@@ -94,25 +93,8 @@ export function AgentCard({ agent, onViewDiff, onApprove, onReject, onKill, onUp
       </div>
 
       {agent.status === "idle" && (
-        <div className="space-y-1 mt-2 pt-2 border-t border-[#3c3c3c]">
-          <label className="flex items-center gap-2 text-xs text-[#858585] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={agent.config?.auto_pull || false}
-              onChange={(e) => onUpdateConfig?.(agent.id, "auto_pull", e.target.checked)}
-              className="rounded"
-            />
-            启动前拉取代码
-          </label>
-          <label className="flex items-center gap-2 text-xs text-[#858585] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={agent.config?.auto_test !== false}
-              onChange={(e) => onUpdateConfig?.(agent.id, "auto_test", e.target.checked)}
-              className="rounded"
-            />
-            完成后自动测试
-          </label>
+        <div className="mt-2 pt-2 border-t border-[#3c3c3c] text-xs text-[#858585]">
+          等待任务...
         </div>
       )}
     </div>
