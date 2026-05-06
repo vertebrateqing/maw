@@ -13,11 +13,6 @@ The dashboard shows:
 - **Agent Panel** -- See all agents and their status (idle / running / review)
 - **Message Queue** -- Pending tasks waiting for an idle agent
 
-## Agent Configuration
-Each idle agent has toggle options:
-- **Auto Pull** -- Auto `git pull origin main` before starting work
-- **Auto Test** -- Auto run tests after completing work (agent fixes bugs if tests fail)
-
 ## Review Cycle
 When an agent completes:
 1. Status changes to `pending_review`

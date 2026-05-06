@@ -11,7 +11,6 @@ MAW enables **remote iPhone control of Claude Code** with parallel multi-agent d
 ## Features
 
 - :iphone: **iPhone Browser Control** -- Access dashboard from Safari, no app needed
-- :desktop_computer: **Web Terminal** -- Full xterm.js terminal for Claude Code
 - :arrows_counterclockwise: **Session Persistence** -- systemd keeps the daemon alive across disconnects
 - :ocean: **Streaming Output** -- Real-time visibility into Claude Code responses
 - :robot: **Multi-Agent Parallel Execution** -- Split complex tasks across multiple Claude Code instances
@@ -28,9 +27,10 @@ iPhone Safari
   └── Tailscale VPN
         └── HTTPS → WSL2:8080
               └── maw-server (Python daemon)
-                    ├── PTY master ←→ WebSocket → xterm.js (browser)
+                    ├── Auto-init on startup
+                    ├── Auto-dispatcher thread (queue → idle agent)
                     ├── Agent N: subprocess claude → .maw/logs/agent-N.log
-                    ├── FastAPI HTTP API (/status, /diff, /approve, /reject, /kill)
+                    ├── FastAPI HTTP API (/status, /messages, /dispatch, /diff, /approve)
                     └── SSE broadcaster (state.json changes)
 ```
 
@@ -107,8 +107,9 @@ sudo systemctl start maw
 1. Open **Tailscale** app on iPhone, connect to your network
 2. Open **Safari**, navigate to: `http://100.x.x.x:8080` (your WSL2 Tailscale IP)
 3. You should see the MAW dashboard with:
-   - Left pane: Web terminal (Claude Code)
-   - Right pane: Agent status cards and message queue
+   - Top: Message input bar for entering tasks
+   - Main area: Agent status cards (idle / running / review)
+   - Right sidebar: Message queue for pending tasks
 
 > :bulb: **Tip**: Add the page to your Home Screen for quick access (Share → Add to Home Screen)
 
@@ -131,16 +132,7 @@ sudo systemctl start maw
 - Tap "Approve & Merge" to merge the agent's branch into main
 - Tap "Reject" to reset the agent's worktree
 
-### 7. Agent Configuration
-
-Each idle agent has toggle options you can set from the dashboard:
-
-| Toggle | Description |
-|--------|-------------|
-| **Auto Pull** | Auto `git pull origin main` before starting work |
-| **Auto Test** | Auto run tests after completing work (agent fixes bugs if tests fail) |
-
-### 8. Disconnect and Reconnect
+### 7. Disconnect and Reconnect
 
 **From iPhone**: Just close Safari. The server keeps running on WSL2.
 

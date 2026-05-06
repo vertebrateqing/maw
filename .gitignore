@@ -19,3 +19,4 @@ frontend/dist/
 *.tmp
 *.log
 get-pip.py
+.idea/

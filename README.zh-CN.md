@@ -11,7 +11,6 @@ MAW 让你能够**用 iPhone 远程控制 Claude Code**，并实现多代理并�
 ## 功能
 
 - :iphone: **iPhone 浏览器控制** -- 用 Safari 访问仪表盘，无需安装 App
-- :desktop_computer: **Web 终端** -- 完整的 xterm.js 终端，运行 Claude Code
 - :arrows_counterclockwise: **会话持久化** -- systemd 守护进程，断网也不断线
 - :ocean: **流式输出** -- 实时查看 Claude Code 的响应
 - :robot: **多代理并行执行** -- 将复杂任务拆分给多个 Claude Code 实例
@@ -28,9 +27,10 @@ iPhone Safari
   └── Tailscale VPN
         └── HTTPS → WSL2:8080
               └── maw-server (Python 守护进程)
-                    ├── PTY 主进程 ←→ WebSocket → xterm.js (浏览器)
+                    ├── 启动时自动初始化
+                    ├── 自动调度器线程（队列 → 空闲代理）
                     ├── Agent N: 子进程 claude → .maw/logs/agent-N.log
-                    ├── FastAPI HTTP API (/status, /diff, /approve, /reject, /kill)
+                    ├── FastAPI HTTP API (/status, /messages, /dispatch, /diff, /approve)
                     └── SSE 广播器 (state.json 变更推送)
 ```
 
@@ -107,8 +107,9 @@ sudo systemctl start maw
 1. iPhone 打开 **Tailscale**，连接网络
 2. 打开 **Safari**，访问：`http://100.x.x.x:8080`（你的 WSL2 Tailscale IP）
 3. 你应该看到 MAW 仪表盘：
-   - 左侧：Web 终端（Claude Code）
-   - 右侧：代理状态卡片和消息队列
+   - 顶部：任务输入框
+   - 主区域：代理状态卡片（空闲 / 运行中 / 待审核）
+   - 右侧边栏：待处理任务队列
 
 > :bulb: **技巧**：把页面添加到主屏幕，一键访问（分享 → 添加到主屏幕）
 
@@ -131,16 +132,7 @@ sudo systemctl start maw
 - 点击 "Approve & Merge" 将代理分支合并到 main
 - 点击 "Reject" 重置代理的 worktree
 
-### 7. 代理配置
-
-每个空闲代理都有可切换的选项，你可以在仪表盘中设置：
-
-| 开关 | 说明 |
-|------|------|
-| **启动前拉取代码** | 开始工作前自动执行 `git pull origin main` |
-| **完成后自动测试** | 完成工作后自动运行测试（如果测试失败，代理会自动修复 bug） |
-
-### 8. 断开和重连
+### 7. 断开和重连
 
 **iPhone 端**：直接关闭 Safari，WSL2 上的服务器继续运行。
 

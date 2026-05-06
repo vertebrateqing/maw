@@ -7,10 +7,8 @@ Detailed setup instructions for WSL2 + iPhone remote development.
 1. [WSL2 Network Setup](#wsl2-network-setup)
 2. [Tailscale Installation](#tailscale-installation)
 3. [SSH Server Configuration](#ssh-server-configuration)
-4. [tmux Configuration](#tmux-configuration)
-5. [iPhone Termius Configuration](#iphone-termius-configuration)
-6. [SSH Key Generation](#ssh-key-generation)
-7. [Troubleshooting](#troubleshooting)
+4. [SSH Key Generation](#ssh-key-generation)
+5. [Troubleshooting](#troubleshooting)
 
 ## WSL2 Network Setup
 
@@ -77,43 +75,6 @@ sudo systemctl restart ssh
 ssh -i ~/.ssh/iphone_maw localhost
 ```
 
-## tmux Configuration
-
-```bash
-cp config/tmux.conf ~/.tmux.conf
-```
-
-### Start tmux session
-
-```bash
-tmux new-session -s maw
-```
-
-## iPhone Termius Configuration
-
-### Import SSH Key
-
-1. In Termius, go to Keychain
-2. Add Key -> Import from file
-3. Transfer `~/.ssh/iphone_maw` private key to iPhone (via AirDrop, email, etc.)
-4. Import the key
-
-### Create Host
-
-1. Hosts -> New Host
-2. Alias: "WSL2 MAW"
-3. Hostname: `100.x.x.x` (your Tailscale IP)
-4. Port: `22`
-5. Username: your WSL2 username
-6. Key: select the imported key
-
-### Snippets (Optional but Recommended)
-
-Create snippets for common tmux commands:
-- Name: "w1", Content: `\x02 1` (Ctrl+b 1)
-- Name: "w2", Content: `\x02 2` (Ctrl+b 2)
-- Name: "new", Content: `\x02 c` (Ctrl+b c)
-
 ## Troubleshooting
 
 ### Cannot connect via Tailscale IP
@@ -124,13 +85,6 @@ sudo tailscale status
 
 # Check sshd is listening
 sudo ss -tlnp | grep 22
-```
-
-### tmux session lost on disconnect
-
-This is normal. Reconnect with:
-```bash
-tmux attach -t maw
 ```
 
 ### Agent process killed unexpectedly
