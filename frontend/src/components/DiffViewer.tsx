@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, Check, GitBranch } from "lucide-react";
 
 interface DiffViewerProps {
   diff: string;
@@ -29,63 +29,78 @@ export function DiffViewer({ diff, agentId, onClose, onApprove, onReject }: Diff
   const lines = parseDiff(diff);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-[#1e1e1e] rounded-lg border border-[#3c3c3c] w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#3c3c3c]">
-          <h3 className="text-sm font-mono text-[#d4d4d4]">Diff: agent/{agentId} → main</h3>
-          <button onClick={onClose} className="text-[#858585] hover:text-white">
-            <X size={18} />
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#111111] rounded-xl border border-[#2a2a2a] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl shadow-black/50">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#222222]">
+          <div className="flex items-center gap-2.5">
+            <GitBranch size={14} className="text-[#00bcd4]" />
+            <h3 className="text-sm font-mono font-bold text-[#d4d4d4]">
+              agent/{agentId} <span className="text-[#555555]">&rarr;</span> main
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 text-[#555555] hover:text-[#d4d4d4] transition-colors"
+          >
+            <X size={16} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 font-mono text-sm">
-          {lines.map((line, i) => {
-            const baseClass = "px-2 py-0.5 whitespace-pre";
-            if (line.type === "add") {
+        {/* Diff Content */}
+        <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed">
+          {lines.length === 0 || (lines.length === 1 && !lines[0].content) ? (
+            <div className="text-[#555555] italic text-center py-8">No changes to display</div>
+          ) : (
+            lines.map((line, i) => {
+              const baseClass = "px-3 py-0.5 whitespace-pre rounded-sm";
+              if (line.type === "add") {
+                return (
+                  <div key={i} className={`${baseClass} bg-[#0d2818] text-[#4ade80]`}>
+                    {line.content}
+                  </div>
+                );
+              }
+              if (line.type === "del") {
+                return (
+                  <div key={i} className={`${baseClass} bg-[#2a0a0a] text-[#f87171]`}>
+                    {line.content}
+                  </div>
+                );
+              }
+              if (line.type === "chunk") {
+                return (
+                  <div key={i} className={`${baseClass} text-[#888888] bg-[#1a1a1a] mt-1 mb-1 font-bold`}>
+                    {line.content}
+                  </div>
+                );
+              }
               return (
-                <div key={i} className={`${baseClass} bg-[#0d3b2e] text-[#4ec9b0]`}>
-                  {line.content}
+                <div key={i} className={`${baseClass} text-[#a0a0a0]`}>
+                  {line.content || " "}
                 </div>
               );
-            }
-            if (line.type === "del") {
-              return (
-                <div key={i} className={`${baseClass} bg-[#3b0d0d] text-[#f48771]`}>
-                  {line.content}
-                </div>
-              );
-            }
-            if (line.type === "chunk") {
-              return (
-                <div key={i} className={`${baseClass} text-[#858585] bg-[#1e1e1e] mt-2`}>
-                  {line.content}
-                </div>
-              );
-            }
-            return (
-              <div key={i} className={`${baseClass} text-[#d4d4d4]`}>
-                {line.content || " "}
-              </div>
-            );
-          })}
+            })
+          )}
         </div>
 
-        <div className="flex gap-3 px-4 py-3 border-t border-[#3c3c3c]">
+        {/* Footer Actions */}
+        <div className="flex gap-2 px-5 py-3.5 border-t border-[#222222]">
           <button
             onClick={() => { onApprove(); onClose(); }}
-            className="px-4 py-2 text-sm bg-green-900 text-green-200 rounded hover:bg-green-800"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold bg-[#1a2f1a] text-[#4caf50] rounded-lg border border-[#2e5c2e] hover:bg-[#203d20] transition-colors"
           >
-            Approve & Merge
+            <Check size={12} /> Approve & Merge
           </button>
           <button
             onClick={() => { onReject(); onClose(); }}
-            className="px-4 py-2 text-sm bg-red-900 text-red-200 rounded hover:bg-red-800"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold bg-[#3d1a1a] text-[#ef5350] rounded-lg border border-[#6b2e2e] hover:bg-[#4d2020] transition-colors"
           >
-            Reject
+            <X size={12} /> Reject
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm bg-[#3c3c3c] text-[#d4d4d4] rounded hover:bg-[#4c4c4c]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono text-[#888888] rounded-lg border border-[#333333] hover:bg-[#1a1a1a] transition-colors"
           >
             Close
           </button>

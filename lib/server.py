@@ -98,7 +98,7 @@ async def api_messages_create(request: Request):
 
     print(f"[MAW-API] Queueing message: {content[:50]}...")
     result = subprocess.run(
-        ["maw", "queue", content],
+        [str(MAW_DIR / "bin" / "maw"), "queue", content],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -119,7 +119,7 @@ async def api_messages_update(msg_id: str, request: Request):
         raise HTTPException(status_code=400, detail="content is required")
 
     result = subprocess.run(
-        ["maw", "queue-update", msg_id, content],
+        [str(MAW_DIR / "bin" / "maw"), "queue-update", msg_id, content],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -133,7 +133,7 @@ async def api_messages_update(msg_id: str, request: Request):
 async def api_messages_delete(msg_id: str):
     """Delete a pending message."""
     result = subprocess.run(
-        ["maw", "queue-remove", msg_id],
+        [str(MAW_DIR / "bin" / "maw"), "queue-remove", msg_id],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -172,7 +172,7 @@ async def api_diff(agent_id: int):
 async def api_approve(agent_id: int):
     """Approve and merge an agent."""
     result = subprocess.run(
-        ["maw", "approve", str(agent_id)],
+        [str(MAW_DIR / "bin" / "maw"), "approve", str(agent_id)],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -186,7 +186,7 @@ async def api_approve(agent_id: int):
 async def api_reject(agent_id: int):
     """Reject an agent."""
     result = subprocess.run(
-        ["maw", "reject", str(agent_id)],
+        [str(MAW_DIR / "bin" / "maw"), "reject", str(agent_id)],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -225,7 +225,7 @@ async def api_agent_config(agent_id: int, request: Request):
         raise HTTPException(status_code=400, detail="key and value are required")
 
     result = subprocess.run(
-        ["maw", "config", str(agent_id), key, str(value).lower()],
+        [str(MAW_DIR / "bin" / "maw"), "config", str(agent_id), key, str(value).lower()],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),

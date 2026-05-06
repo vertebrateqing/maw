@@ -74,12 +74,15 @@ class StateBroadcaster:
             queue.append(self.last_content)
         try:
             print(f"[MAW-Broadcast] SSE client connected, queue size: {len(queue)}")
-            while not await request.is_disconnected():
+            while True:
                 if queue:
                     data = queue.pop(0)
                     yield {"data": json.dumps(data)}
                 else:
                     await asyncio.sleep(0.5)
-        finally:
+        except asyncio.CancelledError:
             print("[MAW-Broadcast] SSE client disconnected")
+            raise
+        finally:
+            print("[MAW-Broadcast] SSE client cleanup")
             self.remove_client(callback)
