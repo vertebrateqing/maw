@@ -5,8 +5,9 @@ import json
 import time
 import threading
 import subprocess
-from pathlib import Path
 import os
+from pathlib import Path
+import datetime
 
 
 class AutoDispatcher:
@@ -36,6 +37,26 @@ class AutoDispatcher:
             self._tick()
             self._stop_event.wait(self.interval)
 
+    @staticmethod
+    def _is_process_alive(pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+            return True
+        except (OSError, ProcessLookupError):
+            return False
+
+    def _has_diff(self, agent_id: int) -> bool:
+        """Check if agent branch has unmerged commits."""
+        try:
+            result = subprocess.run(
+                ["git", "diff", f"main...agent/{agent_id}", "--quiet"],
+                capture_output=True,
+                cwd=str(self.project_dir),
+            )
+            return result.returncode != 0
+        except Exception:
+            return False
+
     def _tick(self):
         try:
             with self._lock:
@@ -46,12 +67,39 @@ class AutoDispatcher:
 
                 agents = data.get("agents", [])
                 messages = data.get("pending_messages", [])
+                changed = False
+
+                # Check if running agents are still alive
+                for agent in agents:
+                    if agent.get("status") == "running":
+                        pid = agent.get("pid")
+                        if pid and not self._is_process_alive(int(pid)):
+                            agent_id = agent["id"]
+                            # Process died — check if there's work to review
+                            if self._has_diff(agent_id):
+                                agent["status"] = "pending_review"
+                                agent["pid"] = None
+                                agent["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                                print(f"[MAW-Dispatch] Agent {agent_id} finished, marked for review")
+                            else:
+                                agent["status"] = "idle"
+                                agent["task"] = ""
+                                agent["pid"] = None
+                                agent["completed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                                print(f"[MAW-Dispatch] Agent {agent_id} died/idle, reset to idle")
+                            changed = True
 
                 if not messages:
+                    if changed:
+                        with open(self.state_file, "w") as f:
+                            json.dump(data, f, indent=2)
                     return
 
                 idle_agents = [a for a in agents if a.get("status") == "idle"]
                 if not idle_agents:
+                    if changed:
+                        with open(self.state_file, "w") as f:
+                            json.dump(data, f, indent=2)
                     return
 
                 agent = idle_agents[0]
@@ -73,5 +121,5 @@ class AutoDispatcher:
 
                 with open(self.state_file, "w") as f:
                     json.dump(data, f, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[MAW-Dispatch] error: {e}")

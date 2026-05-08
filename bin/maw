@@ -147,7 +147,7 @@ PROMPT
   # Run claude in background with the enhanced prompt
   (
     cd "$worktree" || exit 1
-    claude "$enhanced_task"
+    claude --permission-mode auto "$enhanced_task"
   ) > "$log_file" 2>&1 &
 
   local pid=$!
