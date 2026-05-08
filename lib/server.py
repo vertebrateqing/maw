@@ -3,6 +3,7 @@
 
 import os
 import json
+import asyncio
 from pathlib import Path
 import subprocess
 
@@ -126,7 +127,7 @@ async def api_messages_update(msg_id: str, request: Request):
         raise HTTPException(status_code=400, detail="content is required")
 
     result = subprocess.run(
-        [str(MAW_INSTALL_DIR / "bin" / "maw"), "queue-update", msg_id, content],
+        ["maw", "queue-update", msg_id, content],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -140,7 +141,7 @@ async def api_messages_update(msg_id: str, request: Request):
 async def api_messages_delete(msg_id: str):
     """Delete a pending message."""
     result = subprocess.run(
-        [str(MAW_INSTALL_DIR / "bin" / "maw"), "queue-remove", msg_id],
+        ["maw", "queue-remove", msg_id],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -179,7 +180,7 @@ async def api_diff(agent_id: int):
 async def api_approve(agent_id: int):
     """Approve and merge an agent."""
     result = subprocess.run(
-        [str(MAW_INSTALL_DIR / "bin" / "maw"), "approve", str(agent_id)],
+        ["maw", "approve", str(agent_id)],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -193,7 +194,7 @@ async def api_approve(agent_id: int):
 async def api_reject(agent_id: int):
     """Reject an agent."""
     result = subprocess.run(
-        [str(MAW_INSTALL_DIR / "bin" / "maw"), "reject", str(agent_id)],
+        ["maw", "reject", str(agent_id)],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),
@@ -222,6 +223,61 @@ async def api_log(agent_id: int, lines: int = 50):
     return {"log": result.stdout, "agent_id": agent_id}
 
 
+@app.get("/api/log-stream/{agent_id}")
+async def api_log_stream(agent_id: int):
+    """Stream agent log in real-time via SSE."""
+    log_file = MAW_DIR / ".maw" / "logs" / f"agent-{agent_id}.log"
+
+    async def generator():
+        last_size = 0
+        # Send existing content first
+        if log_file.exists():
+            try:
+                with open(log_file, "r") as f:
+                    content = f.read()
+                if content:
+                    yield {
+                        "data": json.dumps(
+                            {"chunk": content, "agent_id": agent_id, "initial": True}
+                        )
+                    }
+                    last_size = len(content.encode("utf-8"))
+            except Exception:
+                pass
+        else:
+            yield {
+                "data": json.dumps(
+                    {"chunk": "[Waiting for log file...]\n", "agent_id": agent_id}
+                )
+            }
+
+        # Tail for new content
+        while True:
+            await asyncio.sleep(0.5)
+            try:
+                if not log_file.exists():
+                    continue
+                current_size = log_file.stat().st_size
+                if current_size > last_size:
+                    with open(log_file, "r") as f:
+                        f.seek(last_size)
+                        new_content = f.read()
+                    if new_content:
+                        yield {
+                            "data": json.dumps(
+                                {"chunk": new_content, "agent_id": agent_id}
+                            )
+                        }
+                    last_size = current_size
+                elif current_size < last_size:
+                    # File was truncated, re-send from beginning
+                    last_size = 0
+            except Exception:
+                pass
+
+    return EventSourceResponse(generator())
+
+
 @app.put("/api/agents/{agent_id}/config")
 async def api_agent_config(agent_id: int, request: Request):
     """Update agent configuration."""
@@ -232,7 +288,7 @@ async def api_agent_config(agent_id: int, request: Request):
         raise HTTPException(status_code=400, detail="key and value are required")
 
     result = subprocess.run(
-        [str(MAW_INSTALL_DIR / "bin" / "maw"), "config", str(agent_id), key, str(value).lower()],
+        ["maw", "config", str(agent_id), key, str(value).lower()],
         capture_output=True,
         text=True,
         cwd=str(MAW_DIR),

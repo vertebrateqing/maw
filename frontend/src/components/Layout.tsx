@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { AgentCard } from "./AgentCard";
 import { DiffViewer } from "./DiffViewer";
+import { LogViewer } from "./LogViewer";
 import { MessageInput } from "./MessageInput";
 import { MessageQueue } from "./MessageQueue";
 import { useApi } from "@/hooks/useApi";
@@ -9,6 +10,7 @@ import { List, Inbox } from "lucide-react";
 export function Layout() {
   const { state, error, connected, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage } = useApi();
   const [diffData, setDiffData] = useState<{ id: number; text: string } | null>(null);
+  const [logAgentId, setLogAgentId] = useState<number | null>(null);
   const [mobileTab, setMobileTab] = useState<"agents" | "messages">("agents");
   const agentsScrollRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -40,6 +42,10 @@ export function Layout() {
   const handleViewDiff = async (id: number) => {
     const text = await fetchDiff(id);
     setDiffData({ id, text });
+  };
+
+  const handleViewLog = (id: number) => {
+    setLogAgentId(id);
   };
 
   const runningCount = state?.agents?.filter((a) => a.status === "running").length || 0;
@@ -153,6 +159,7 @@ export function Layout() {
                   key={agent.id}
                   agent={agent}
                   onViewDiff={handleViewDiff}
+                  onViewLog={handleViewLog}
                   onApprove={approve}
                   onReject={reject}
                   onKill={kill}
@@ -195,6 +202,14 @@ export function Layout() {
           onClose={() => setDiffData(null)}
           onApprove={() => approve(diffData.id)}
           onReject={() => reject(diffData.id)}
+        />
+      )}
+
+      {/* Log Modal */}
+      {logAgentId !== null && (
+        <LogViewer
+          agentId={logAgentId}
+          onClose={() => setLogAgentId(null)}
         />
       )}
     </div>

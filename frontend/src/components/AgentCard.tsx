@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Square, Check, X, FileText, Clock, Terminal } from "lucide-react";
+import { Square, Check, X, FileText, Clock, Terminal, ScrollText } from "lucide-react";
 import type { Agent } from "@/types";
 
 interface AgentCardProps {
   agent: Agent;
   onViewDiff: (id: number) => void;
+  onViewLog: (id: number) => void;
   onApprove: (id: number) => void;
   onReject: (id: number) => void;
   onKill: (id: number) => void;
@@ -58,7 +59,7 @@ function formatElapsed(startedAt: string | null) {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function AgentCard({ agent, onViewDiff, onApprove, onReject, onKill }: AgentCardProps) {
+export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onReject, onKill }: AgentCardProps) {
   const [showFullTask, setShowFullTask] = useState(false);
   const isReview = agent.status === "pending_review";
 
@@ -109,7 +110,13 @@ export function AgentCard({ agent, onViewDiff, onApprove, onReject, onKill }: Ag
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => onViewLog(agent.id)}
+          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#1a1a2e] text-[#64b5f6] rounded border border-[#2a2a5a] hover:bg-[#202040] transition-colors"
+        >
+          <ScrollText size={10} /> Log
+        </button>
         {agent.status === "running" && (
           <button
             onClick={() => onKill(agent.id)}
