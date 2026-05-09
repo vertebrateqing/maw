@@ -114,31 +114,31 @@ export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onKill, onC
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => onViewLog(agent.id)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#1a1a2e] text-[#64b5f6] rounded border border-[#2a2a5a] hover:bg-[#202040] transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#1a1a2e] text-[#64b5f6] rounded border border-[#2a2a5a] hover:bg-[#202040] transition-colors min-h-[28px] touch-manipulation"
         >
-          <ScrollText size={10} /> Log
+          <ScrollText size={12} /> Log
         </button>
         {agent.status === "running" && (
           <button
             onClick={() => onKill(agent.id)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#3d1a1a] text-[#ef5350] rounded border border-[#6b2e2e] hover:bg-[#4d2020] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#3d1a1a] text-[#ef5350] rounded border border-[#6b2e2e] hover:bg-[#4d2020] transition-colors min-h-[28px] touch-manipulation"
           >
-            <Square size={10} /> Kill
+            <Square size={12} /> Kill
           </button>
         )}
         {agent.status === "pending_review" && (
           <>
             <button
               onClick={() => onViewDiff(agent.id)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#1e1e1e] text-[#b0b0b0] rounded border border-[#333333] hover:bg-[#2a2a2a] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#1e1e1e] text-[#b0b0b0] rounded border border-[#333333] hover:bg-[#2a2a2a] transition-colors min-h-[28px] touch-manipulation"
             >
-              <FileText size={10} /> Diff
+              <FileText size={12} /> Diff
             </button>
             <button
               onClick={() => onApprove(agent.id)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#1a2f1a] text-[#4caf50] rounded border border-[#2e5c2e] hover:bg-[#203d20] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#1a2f1a] text-[#4caf50] rounded border border-[#2e5c2e] hover:bg-[#203d20] transition-colors min-h-[28px] touch-manipulation"
             >
-              <Check size={10} /> Approve
+              <Check size={12} /> Approve
             </button>
           </>
         )}
