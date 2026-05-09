@@ -4,9 +4,10 @@
 import subprocess
 import os
 import signal
+import sys
 from pathlib import Path
 
-MAW_DIR = Path(os.getcwd())
+MAW_INSTALL_DIR = Path(__file__).parent.parent.resolve()
 
 
 def _build_agent_prompt(task: str, agent_id: int, worktree: Path, project_dir: str) -> str:
@@ -30,24 +31,20 @@ def _build_agent_prompt(task: str, agent_id: int, worktree: Path, project_dir: s
 
 
 def run_agent(agent_id: int, task: str, project_dir: str, agent_config: dict = None) -> subprocess.Popen:
-    """Run claude in agent worktree as background process."""
+    """Run claude in agent worktree as background process via agent_wrapper."""
     worktree = Path(project_dir) / ".agents" / f"agent-{agent_id}"
     log_file = Path(project_dir) / ".maw" / "logs" / f"agent-{agent_id}.log"
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     enhanced_task = _build_agent_prompt(task, agent_id, worktree, project_dir)
 
-    # Script that runs claude with the enhanced prompt
-    script = f'''#!/bin/bash
-cd "{worktree}"
-claude "{enhanced_task.replace('"', '\\"')}"
-'''
+    wrapper = MAW_INSTALL_DIR / "lib" / "agent_wrapper.py"
 
     proc = subprocess.Popen(
-        ["bash", "-c", script],
-        stdout=open(log_file, "w"),
-        stderr=subprocess.STDOUT,
+        [sys.executable, str(wrapper), enhanced_task, str(worktree), str(log_file)],
         start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     return proc
 

@@ -144,11 +144,8 @@ maw_cmd_dispatch() {
 PROMPT
 )
 
-  # Run claude in background with the enhanced prompt
-  (
-    cd "$worktree" || exit 1
-    claude --permission-mode auto "$enhanced_task"
-  ) > "$log_file" 2>&1 &
+  # Run claude via agent_wrapper for stream-json parsing
+  python3 "${root}/lib/agent_wrapper.py" "$enhanced_task" "$worktree" "$log_file" > /dev/null 2>&1 &
 
   local pid=$!
   maw_state_update_agent "$agent_id" "running" "$task" "$pid"
