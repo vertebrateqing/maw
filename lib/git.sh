@@ -87,19 +87,25 @@ maw_git_merge_agent() {
     main_branch="master"
   fi
 
+  # Update local main from remote first
+  git -C "$root" checkout "$main_branch"
+  git -C "$root" pull origin "$main_branch" || true
+
   # Check if branch has commits ahead of main
   local ahead
   ahead=$(git -C "$root" rev-list --count "${main_branch}..${branch}" 2>/dev/null || echo "0")
 
   if [[ "$ahead" == "0" ]]; then
     maw_log info "Agent ${id} has no new commits to merge (already merged or no changes)"
+    # Still push main in case it was merged before but not pushed
+    git -C "$root" push origin "$main_branch" || true
     return 0
   fi
 
   # Perform merge
-  git -C "$root" checkout "$main_branch"
   if git -C "$root" merge --no-ff "$branch" -m "Merge agent/${id}"; then
-    maw_log info "Successfully merged agent/${id} into ${main_branch}"
+    git -C "$root" push origin "$main_branch"
+    maw_log info "Successfully merged agent/${id} into ${main_branch} and pushed"
     return 0
   else
     maw_log error "Merge conflict when merging agent/${id}. Please resolve manually."
