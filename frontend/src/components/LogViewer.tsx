@@ -4,9 +4,10 @@ import { X, Terminal, Radio } from "lucide-react";
 interface LogViewerProps {
   agentId: number;
   onClose: () => void;
+  onClearLog?: (agentId: number) => void;
 }
 
-export function LogViewer({ agentId, onClose }: LogViewerProps) {
+export function LogViewer({ agentId, onClose, onClearLog }: LogViewerProps) {
   const [log, setLog] = useState("");
   const [connected, setConnected] = useState(false);
   const scrollRef = useRef<HTMLPreElement>(null);
@@ -101,15 +102,29 @@ export function LogViewer({ agentId, onClose }: LogViewerProps) {
           >
             {log.length.toLocaleString()} chars
           </span>
-          <button
-            onClick={() => {
-              setLog("");
-              autoScroll.current = true;
-            }}
-            className="text-[10px] font-mono text-[#555555] hover:text-[#888888] transition-colors"
-          >
-            Clear
-          </button>
+          <div className="flex items-center gap-3">
+            {onClearLog && (
+              <button
+                onClick={() => {
+                  onClearLog(agentId);
+                  setLog("");
+                  autoScroll.current = true;
+                }}
+                className="text-[10px] font-mono text-[#ef5350] hover:text-[#f87171] transition-colors"
+              >
+                Clear Server Log
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setLog("");
+                autoScroll.current = true;
+              }}
+              className="text-[10px] font-mono text-[#555555] hover:text-[#888888] transition-colors"
+            >
+              Clear Display
+            </button>
+          </div>
         </div>
       </div>
     </div>

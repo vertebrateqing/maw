@@ -223,6 +223,19 @@ async def api_log(agent_id: int, lines: int = 50):
     return {"log": result.stdout, "agent_id": agent_id}
 
 
+@app.delete("/api/log-clear/{agent_id}")
+async def api_log_clear(agent_id: int):
+    """Clear agent log file."""
+    log_file = MAW_DIR / ".maw" / "logs" / f"agent-{agent_id}.log"
+    try:
+        if log_file.exists():
+            with open(log_file, "w") as f:
+                f.write("")
+        return {"status": "cleared", "agent_id": agent_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/log-stream/{agent_id}")
 async def api_log_stream(agent_id: int):
     """Stream agent log in real-time via SSE."""

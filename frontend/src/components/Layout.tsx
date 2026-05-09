@@ -8,7 +8,7 @@ import { useApi } from "@/hooks/useApi";
 import { List, Inbox } from "lucide-react";
 
 export function Layout() {
-  const { state, error, connected, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage } = useApi();
+  const { state, error, connected, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage, clearLog } = useApi();
   const [diffData, setDiffData] = useState<{ id: number; text: string } | null>(null);
   const [logAgentId, setLogAgentId] = useState<number | null>(null);
   const [mobileTab, setMobileTab] = useState<"agents" | "messages">("agents");
@@ -210,6 +210,7 @@ export function Layout() {
         <LogViewer
           agentId={logAgentId}
           onClose={() => setLogAgentId(null)}
+          onClearLog={clearLog}
         />
       )}
     </div>

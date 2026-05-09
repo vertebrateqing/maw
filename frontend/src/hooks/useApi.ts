@@ -73,6 +73,10 @@ export function useApi() {
     return data.log;
   }, []);
 
+  const clearLog = useCallback(async (agentId: number): Promise<void> => {
+    await fetch(`${API_BASE}/log-clear/${agentId}`, { method: "DELETE" });
+  }, []);
+
   const approve = useCallback(async (agentId: number) => {
     await fetch(`${API_BASE}/approve/${agentId}`, { method: "POST" });
   }, []);
@@ -158,6 +162,7 @@ export function useApi() {
     connected,
     fetchDiff,
     fetchLog,
+    clearLog,
     approve,
     reject,
     kill,
