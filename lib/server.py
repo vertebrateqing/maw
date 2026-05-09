@@ -198,6 +198,8 @@ async def api_reject(agent_id: int):
         text=True,
         cwd=str(MAW_DIR),
     )
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=result.stderr)
     return {"status": "rejected", "agent_id": agent_id}
 
 
