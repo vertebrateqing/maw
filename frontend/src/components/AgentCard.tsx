@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Square, Check, X, FileText, Clock, Terminal, ScrollText } from "lucide-react";
+import { Square, Check, FileText, Clock, Terminal, ScrollText, Send } from "lucide-react";
 import type { Agent } from "@/types";
 
 interface AgentCardProps {
@@ -7,8 +7,8 @@ interface AgentCardProps {
   onViewDiff: (id: number) => void;
   onViewLog: (id: number) => void;
   onApprove: (id: number) => void;
-  onReject: (id: number) => void;
   onKill: (id: number) => void;
+  onContinue?: (id: number, task: string) => void;
 }
 
 function StatusBadge({ status }: { status: Agent["status"] }) {
@@ -59,8 +59,9 @@ function formatElapsed(startedAt: string | null) {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onReject, onKill }: AgentCardProps) {
+export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onKill, onContinue }: AgentCardProps) {
   const [showFullTask, setShowFullTask] = useState(false);
+  const [continueText, setContinueText] = useState("");
   const isReview = agent.status === "pending_review";
 
   return (
@@ -139,15 +140,40 @@ export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onReject, o
             >
               <Check size={10} /> Approve
             </button>
-            <button
-              onClick={() => onReject(agent.id)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#3d1a1a] text-[#ef5350] rounded border border-[#6b2e2e] hover:bg-[#4d2020] transition-colors"
-            >
-              <X size={10} /> Reject
-            </button>
           </>
         )}
       </div>
+
+      {/* Continue Task Input */}
+      {isReview && onContinue && (
+        <div className="flex gap-2 mt-2">
+          <input
+            type="text"
+            value={continueText}
+            onChange={(e) => setContinueText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && continueText.trim()) {
+                onContinue(agent.id, continueText.trim());
+                setContinueText("");
+              }
+            }}
+            placeholder="输入修改要求..."
+            className="flex-1 min-w-0 px-2.5 py-1 text-[11px] font-mono bg-[#0a0a0a] text-[#b0b0b0] rounded border border-[#333333] placeholder:text-[#555555] focus:outline-none focus:border-[#00bcd4] transition-colors"
+          />
+          <button
+            onClick={() => {
+              if (continueText.trim()) {
+                onContinue(agent.id, continueText.trim());
+                setContinueText("");
+              }
+            }}
+            disabled={!continueText.trim()}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#1a2744] text-[#64b5f6] rounded border border-[#2a4a7a] hover:bg-[#202d50] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <Send size={10} /> 继续
+          </button>
+        </div>
+      )}
     </div>
   );
 }

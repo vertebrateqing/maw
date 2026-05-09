@@ -8,7 +8,7 @@ import { useApi } from "@/hooks/useApi";
 import { List, Inbox } from "lucide-react";
 
 export function Layout() {
-  const { state, error, connected, fetchDiff, approve, reject, kill, addMessage, updateMessage, deleteMessage, clearLog } = useApi();
+  const { state, error, connected, fetchDiff, approve, kill, addMessage, updateMessage, deleteMessage, clearLog, continueTask } = useApi();
   const [diffData, setDiffData] = useState<{ id: number; text: string } | null>(null);
   const [logAgentId, setLogAgentId] = useState<number | null>(null);
   const [mobileTab, setMobileTab] = useState<"agents" | "messages">("agents");
@@ -160,9 +160,23 @@ export function Layout() {
                   agent={agent}
                   onViewDiff={handleViewDiff}
                   onViewLog={handleViewLog}
-                  onApprove={approve}
-                  onReject={reject}
-                  onKill={kill}
+                  onApprove={async (id) => {
+                    try {
+                      await approve(id);
+                    } catch (e: unknown) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      alert(`Approve failed: ${msg}`);
+                    }
+                  }}
+                  onKill={async (id) => {
+                    try {
+                      await kill(id);
+                    } catch (e: unknown) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      alert(`Kill failed: ${msg}`);
+                    }
+                  }}
+                  onContinue={continueTask}
                 />
               ))}
             </div>
@@ -200,8 +214,16 @@ export function Layout() {
           diff={diffData.text}
           agentId={diffData.id}
           onClose={() => setDiffData(null)}
-          onApprove={() => approve(diffData.id)}
-          onReject={() => reject(diffData.id)}
+          onApprove={async () => {
+            try {
+              await approve(diffData.id);
+              setDiffData(null);
+              alert("Agent approved and merged successfully.");
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e);
+              alert(`Approve failed: ${msg}`);
+            }
+          }}
         />
       )}
 

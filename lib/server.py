@@ -4,6 +4,7 @@
 import os
 import json
 import asyncio
+import datetime
 from pathlib import Path
 import subprocess
 
@@ -37,7 +38,7 @@ _maw_bin_dir = str(MAW_INSTALL_DIR / "bin")
 if _maw_bin_dir not in os.environ.get("PATH", ""):
     os.environ["PATH"] = _maw_bin_dir + os.pathsep + os.environ.get("PATH", "")
 
-app = FastAPI(title="MAW Server", version="0.2.1")
+app = FastAPI(title="MAW Server", version="0.2.2")
 
 _dispatcher = None
 
@@ -200,6 +201,46 @@ async def api_reject(agent_id: int):
         cwd=str(MAW_DIR),
     )
     return {"status": "rejected", "agent_id": agent_id}
+
+
+@app.post("/api/continue/{agent_id}")
+async def api_continue(agent_id: int, request: Request):
+    """Continue working on a pending_review agent with new instructions."""
+    body = await request.json()
+    task = body.get("task", "").strip()
+    if not task:
+        raise HTTPException(status_code=400, detail="task is required")
+
+    state_file = MAW_DIR / ".maw" / "state.json"
+    if not state_file.exists():
+        raise HTTPException(status_code=404, detail="state file not found")
+
+    with open(state_file) as f:
+        data = json.load(f)
+
+    agent = next((a for a in data.get("agents", []) if a.get("id") == agent_id), None)
+    if not agent:
+        raise HTTPException(status_code=404, detail="agent not found")
+    if agent.get("status") != "pending_review":
+        raise HTTPException(status_code=400, detail=f"agent is {agent.get('status')}, not pending_review")
+
+    # Update state
+    agent["status"] = "running"
+    agent["task"] = task
+    agent["started_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    agent["completed_at"] = None
+
+    with open(state_file, "w") as f:
+        json.dump(data, f, indent=2)
+
+    # Start agent
+    proc = run_agent(agent_id, task, str(MAW_DIR))
+    agent["pid"] = proc.pid
+
+    with open(state_file, "w") as f:
+        json.dump(data, f, indent=2)
+
+    return {"status": "continued", "agent_id": agent_id, "pid": proc.pid}
 
 
 @app.post("/api/kill/{agent_id}")

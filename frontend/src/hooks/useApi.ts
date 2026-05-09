@@ -78,15 +78,19 @@ export function useApi() {
   }, []);
 
   const approve = useCallback(async (agentId: number) => {
-    await fetch(`${API_BASE}/approve/${agentId}`, { method: "POST" });
-  }, []);
-
-  const reject = useCallback(async (agentId: number) => {
-    await fetch(`${API_BASE}/reject/${agentId}`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/approve/${agentId}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
   }, []);
 
   const kill = useCallback(async (agentId: number) => {
-    await fetch(`${API_BASE}/kill/${agentId}`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/kill/${agentId}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
   }, []);
 
   const fetchMessages = useCallback(async (): Promise<Message[]> => {
@@ -148,12 +152,16 @@ export function useApi() {
     });
   }, []);
 
-  const updateAgentConfig = useCallback(async (agentId: number, key: string, value: boolean): Promise<void> => {
-    await fetch(`${API_BASE}/agents/${agentId}/config`, {
-      method: "PUT",
+  const continueTask = useCallback(async (agentId: number, task: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/continue/${agentId}`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, value }),
+      body: JSON.stringify({ task }),
     });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
   }, []);
 
   return {
@@ -164,12 +172,11 @@ export function useApi() {
     fetchLog,
     clearLog,
     approve,
-    reject,
     kill,
+    continueTask,
     fetchMessages,
     addMessage,
     updateMessage,
     deleteMessage,
-    updateAgentConfig,
   };
 }

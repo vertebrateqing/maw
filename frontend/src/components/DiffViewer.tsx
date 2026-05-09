@@ -5,7 +5,6 @@ interface DiffViewerProps {
   agentId: number;
   onClose: () => void;
   onApprove: () => void;
-  onReject: () => void;
 }
 
 function parseDiff(diff: string) {
@@ -25,7 +24,7 @@ function parseDiff(diff: string) {
   return result;
 }
 
-export function DiffViewer({ diff, agentId, onClose, onApprove, onReject }: DiffViewerProps) {
+export function DiffViewer({ diff, agentId, onClose, onApprove }: DiffViewerProps) {
   const lines = parseDiff(diff);
 
   return (
@@ -53,7 +52,7 @@ export function DiffViewer({ diff, agentId, onClose, onApprove, onReject }: Diff
             <div className="text-[#555555] italic text-center py-8">No changes to display</div>
           ) : (
             lines.map((line, i) => {
-              const baseClass = "px-3 py-0.5 whitespace-pre rounded-sm";
+              const baseClass = "px-3 py-0.5 whitespace-pre rounded-sm w-max min-w-full";
               if (line.type === "add") {
                 return (
                   <div key={i} className={`${baseClass} bg-[#0d2818] text-[#4ade80]`}>
@@ -87,16 +86,10 @@ export function DiffViewer({ diff, agentId, onClose, onApprove, onReject }: Diff
         {/* Footer Actions */}
         <div className="flex gap-2 px-5 py-3.5 border-t border-[#222222]">
           <button
-            onClick={() => { onApprove(); onClose(); }}
+            onClick={() => { onApprove(); }}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold bg-[#1a2f1a] text-[#4caf50] rounded-lg border border-[#2e5c2e] hover:bg-[#203d20] transition-colors"
           >
             <Check size={12} /> Approve & Merge
-          </button>
-          <button
-            onClick={() => { onReject(); onClose(); }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold bg-[#3d1a1a] text-[#ef5350] rounded-lg border border-[#6b2e2e] hover:bg-[#4d2020] transition-colors"
-          >
-            <X size={12} /> Reject
           </button>
           <button
             onClick={onClose}

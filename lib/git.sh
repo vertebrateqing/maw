@@ -92,8 +92,8 @@ maw_git_merge_agent() {
   ahead=$(git -C "$root" rev-list --count "${main_branch}..${branch}" 2>/dev/null || echo "0")
 
   if [[ "$ahead" == "0" ]]; then
-    maw_log warn "Agent ${id} has no new commits to merge"
-    return 1
+    maw_log info "Agent ${id} has no new commits to merge (already merged or no changes)"
+    return 0
   fi
 
   # Perform merge

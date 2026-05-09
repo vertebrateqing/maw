@@ -1,8 +1,3 @@
-export interface AgentConfig {
-  auto_pull: boolean;
-  auto_test: boolean;
-}
-
 export interface Agent {
   id: number;
   worktree: string;
@@ -12,7 +7,6 @@ export interface Agent {
   pid: number | null;
   started_at: string | null;
   completed_at: string | null;
-  config: AgentConfig;
 }
 
 export interface Message {
