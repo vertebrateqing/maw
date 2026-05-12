@@ -87,3 +87,9 @@ maw_agents_dir() {
   root="$(maw_project_root)"
   echo "${root}/.agents"
 }
+
+# maw_hello - print a greeting message
+maw_hello() {
+  local name="${1:-world}"
+  echo "hello ${name}"
+}
