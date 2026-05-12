@@ -28,7 +28,8 @@ maw_help() {
   reject <id>           拒绝并重置代理
   diff <id>             查看代理的 git diff
   merge <id>            合并代理分支到 main
-  reset <id>            重置代理到 main
+  reset                 一键重置所有代理
+  reset <id>            重置单个代理到 main
   kill <id>             终止代理进程
   menu                  交互式菜单
   help                  显示帮助信息
@@ -59,7 +60,8 @@ Commands:
   reject <id>           Reject and reset agent
   diff <id>             Show agent git diff
   merge <id>            Merge agent branch into main
-  reset <id>            Reset agent to main
+  reset                 Global reset: kill all, clear logs, sync with main
+  reset <id>            Reset single agent to main
   kill <id>             Kill agent process
   menu                  Interactive menu
   help                  Show this help message
@@ -194,13 +196,148 @@ maw_cmd_merge() {
   fi
 }
 
-# maw_cmd_reset <agent_id>
+# maw_cmd_reset [agent_id]
+# With agent_id: reset single agent (existing behavior)
+# Without agent_id: global reset of all agents
 maw_cmd_reset() {
-  local agent_id="$1"
+  local agent_id="${1:-}"
 
-  maw_git_worktree_reset "$agent_id"
-  maw_state_update_agent "$agent_id" "idle" ""
-  maw_log info "Agent ${agent_id} reset to main"
+  if [[ -n "$agent_id" ]]; then
+    maw_git_worktree_reset "$agent_id"
+    maw_state_update_agent "$agent_id" "idle" ""
+    maw_log info "Agent ${agent_id} reset to main"
+    return 0
+  fi
+
+  maw_cmd_reset_all
+}
+
+# maw_cmd_reset_all — one-shot reset of the entire workspace
+maw_cmd_reset_all() {
+  local root
+  root="$(maw_project_root)"
+  local state_file
+  state_file="$(maw_state_file)"
+  local lang="${MAW_LANG:-en}"
+
+  if [[ "$lang" == "zh" ]]; then
+    echo "【MAW 全局重置】"
+  else
+    echo "【MAW Global Reset】"
+  fi
+
+  # 1. Kill running processes
+  local killed_count=0
+  while IFS= read -r agent_json; do
+    local id status pid
+    id=$(echo "$agent_json" | jq -r '.id')
+    status=$(echo "$agent_json" | jq -r '.status')
+    pid=$(echo "$agent_json" | jq -r '.pid // empty')
+
+    # Kill child processes first (claude), then parent (agent_wrapper)
+    if [[ "$status" == "running" && -n "$pid" && "$pid" != "null" ]]; then
+      if ps -p "$pid" > /dev/null 2>&1; then
+        # Kill claude child before parent so it doesn't become orphan
+        local child_pids
+        child_pids=$(pgrep -P "$pid" 2>/dev/null || true)
+        if [[ -n "$child_pids" ]]; then
+          echo "$child_pids" | xargs -r kill -9 2>/dev/null || true
+        fi
+
+        kill "$pid" 2>/dev/null || true
+        sleep 0.3
+        kill -9 "$pid" 2>/dev/null || true
+
+        maw_log info "Killed agent-${id} (PID: ${pid})"
+        killed_count=$((killed_count + 1))
+      fi
+    fi
+
+    # Safety: pkill any orphaned agent_wrapper/claude for this agent
+    pkill -f "agent_wrapper.py.*agent-${id}" 2>/dev/null || true
+    pkill -f "claude -p.*agent-${id}" 2>/dev/null || true
+  done < <(jq -c '.agents[]' "$state_file" 2>/dev/null || true)
+
+  if [[ "$lang" == "zh" ]]; then
+    echo "  已终止 ${killed_count} 个运行中的 agent"
+  else
+    echo "  Killed ${killed_count} running agent(s)"
+  fi
+
+  # 2. Fetch origin/main
+  echo ""
+  if [[ "$lang" == "zh" ]]; then
+    echo "  同步 origin/main..."
+  else
+    echo "  Fetching origin/main..."
+  fi
+  git -C "$root" fetch origin main 2>/dev/null || true
+
+  # 3. Reset worktrees + report and clear logs
+  echo ""
+  if [[ "$lang" == "zh" ]]; then
+    echo "  重置 worktree 和日志:"
+  else
+    echo "  Resetting worktrees and logs:"
+  fi
+
+  while IFS= read -r agent_json; do
+    local id
+    id=$(echo "$agent_json" | jq -r '.id')
+    local worktree
+    worktree="$(maw_agents_dir)/agent-${id}"
+
+    # Force-clean any uncommitted changes before reset
+    git -C "$worktree" checkout -- . 2>/dev/null || true
+    git -C "$worktree" clean -fd 2>/dev/null || true
+
+    # Reset worktree
+    maw_git_worktree_reset "$id"
+
+    # Report and clear log
+    local log_file="${root}/.maw/logs/agent-${id}.log"
+    if [[ -f "$log_file" ]]; then
+      local lines
+      lines=$(wc -l < "$log_file" | tr -d ' ')
+      if [[ "$lang" == "zh" ]]; then
+        printf "    agent-%s: 日志 %s 行 → 已清空\n" "$id" "$lines"
+      else
+        printf "    agent-%s: log %s lines → cleared\n" "$id" "$lines"
+      fi
+      : > "$log_file"
+    else
+      if [[ "$lang" == "zh" ]]; then
+        printf "    agent-%s: 无日志\n" "$id"
+      else
+        printf "    agent-%s: no log\n" "$id"
+      fi
+    fi
+  done < <(jq -c '.agents[]' "$state_file" 2>/dev/null || true)
+
+  # 4. Reset state.json
+  echo ""
+  if [[ "$lang" == "zh" ]]; then
+    echo "  重置状态..."
+  else
+    echo "  Resetting state..."
+  fi
+
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  jq --arg ts "$now" \
+     '.agents |= map(.status = "idle" | .task = "" | .pid = null | .started_at = null | .completed_at = $ts) | .pending_messages = []' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
+
+  # 5. Show final status
+  echo ""
+  maw_ui_render_board "$lang"
+
+  if [[ "$lang" == "zh" ]]; then
+    maw_log info "全局重置完成"
+  else
+    maw_log info "Global reset complete"
+  fi
 }
 
 # maw_cmd_kill <agent_id>
@@ -397,10 +534,7 @@ main() {
       maw_cmd_merge "$1"
       ;;
     reset)
-      if [[ $# -lt 1 ]]; then
-        maw_die "Usage: maw reset <agent-id>"
-      fi
-      maw_cmd_reset "$1"
+      maw_cmd_reset "${1:-}"
       ;;
     kill)
       if [[ $# -lt 1 ]]; then

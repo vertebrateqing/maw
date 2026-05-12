@@ -114,6 +114,7 @@ class AutoDispatcher:
                     cwd=str(self.project_dir),
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
                 )
 
                 # Remove message from queue

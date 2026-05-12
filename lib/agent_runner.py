@@ -52,6 +52,7 @@ def run_agent(agent_id: int, task: str, project_dir: str, agent_config: dict = N
         start_new_session=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
     )
     return proc
 

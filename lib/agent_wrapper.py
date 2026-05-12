@@ -31,52 +31,61 @@ def main():
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        stdin=subprocess.DEVNULL,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=worktree,
     )
 
-    with open(log_file, "w", buffering=1) as f:
-        for line in proc.stdout:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                data = json.loads(line)
-                msg_type = data.get("type")
+    try:
+        with open(log_file, "w", buffering=1, encoding="utf-8", errors="replace") as f:
+            for line in proc.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    msg_type = data.get("type")
 
-                if msg_type == "assistant" and "message" in data:
-                    msg = data["message"]
-                    for content in msg.get("content", []):
-                        ct = content.get("type")
-                        if ct == "thinking":
-                            thinking = content.get("thinking", "").strip()
-                            if thinking:
-                                f.write(f"\n🤔 {thinking}\n\n")
-                        elif ct == "tool_use":
-                            name = content.get("name", "")
-                            inp = content.get("input", {})
-                            inp_str = json.dumps(inp, ensure_ascii=False)
-                            if len(inp_str) > 200:
-                                inp_str = inp_str[:200] + "..."
-                            f.write(f"🔧 {name}({inp_str})\n")
-                        elif ct == "text":
-                            text = content.get("text", "").strip()
-                            if text:
-                                f.write(f"{text}\n")
+                    if msg_type == "assistant" and "message" in data:
+                        msg = data["message"]
+                        for content in msg.get("content", []):
+                            ct = content.get("type")
+                            if ct == "thinking":
+                                thinking = content.get("thinking", "").strip()
+                                if thinking:
+                                    f.write(f"\n🤔 {thinking}\n\n")
+                            elif ct == "tool_use":
+                                name = content.get("name", "")
+                                inp = content.get("input", {})
+                                inp_str = json.dumps(inp, ensure_ascii=False)
+                                if len(inp_str) > 200:
+                                    inp_str = inp_str[:200] + "..."
+                                f.write(f"🔧 {name}({inp_str})\n")
+                            elif ct == "text":
+                                text = content.get("text", "").strip()
+                                if text:
+                                    f.write(f"{text}\n")
 
-                elif msg_type == "user" and "message" in data:
-                    msg = data["message"]
-                    for content in msg.get("content", []):
-                        if content.get("type") == "tool_result":
-                            result = content.get("content", "")
-                            # Truncate long results
-                            if isinstance(result, str) and len(result) > 500:
-                                result = result[:500] + f"\n... ({len(result) - 500} more chars)"
-                            f.write(f"✅ {result}\n")
+                    elif msg_type == "user" and "message" in data:
+                        msg = data["message"]
+                        for content in msg.get("content", []):
+                            if content.get("type") == "tool_result":
+                                result = content.get("content", "")
+                                # Truncate long results
+                                if isinstance(result, str) and len(result) > 500:
+                                    result = result[:500] + f"\n... ({len(result) - 500} more chars)"
+                                f.write(f"✅ {result}\n")
 
-            except json.JSONDecodeError:
-                # Not JSON (e.g., stderr redirected to stdout), write raw
-                f.write(f"{line}\n")
+                except json.JSONDecodeError:
+                    # Not JSON (e.g., stderr redirected to stdout), write raw
+                    f.write(f"{line}\n")
+    except Exception as e:
+        # Write crash info to log so it is visible in the dashboard
+        with open(log_file, "a", encoding="utf-8", errors="replace") as f:
+            f.write(f"\n❌ agent_wrapper crashed: {e}\n")
+        raise
 
     exit_code = proc.wait()
     sys.exit(exit_code)

@@ -112,11 +112,11 @@ maw_ui_render_board() {
     printf "│ %-2s  %s %-6s  %-8s  %-26s  %-8s │\n" \
       "$id" "$symbol" "$label" "$branch" "$task_display" "$elapsed"
 
-    ((total++))
+    total=$((total + 1))
     case "$status" in
-      running) ((running++)) ;;
-      done)    ((done_count++)) ;;
-      idle)    ((idle++)) ;;
+      running) running=$((running + 1)) ;;
+      done)    done_count=$((done_count + 1)) ;;
+      idle)    idle=$((idle + 1)) ;;
     esac
   done < <(jq -c '.agents[]' "$state_file" 2>/dev/null || true)
 
