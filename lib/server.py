@@ -17,16 +17,19 @@ from lib.agent_runner import run_agent, kill_agent
 from lib.auto_dispatcher import AutoDispatcher
 
 def _get_project_root() -> Path:
-    """Find git project root of the current working directory."""
+    """Find git project root, anchored to this file's location (not cwd)."""
+    # Use the directory containing this file as the anchor so that running
+    # maw-server from an unrelated directory still resolves to the maw repo.
+    anchor = Path(__file__).parent.parent.resolve()
     result = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
-        cwd=os.getcwd(),
+        cwd=str(anchor),
     )
     if result.returncode == 0:
         return Path(result.stdout.strip())
-    return Path(os.getcwd()).resolve()
+    return anchor
 
 
 MAW_DIR = _get_project_root()
