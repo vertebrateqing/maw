@@ -14,38 +14,42 @@ interface AgentCardProps {
 function StatusBadge({ status }: { status: Agent["status"] }) {
   const config = {
     idle: {
-      bg: "bg-[#1a2f1a]",
-      text: "text-[#4caf50]",
-      border: "border-[#2e5c2e]",
-      dot: "bg-[#4caf50]",
+      bg: "bg-[hsl(145,65%,48%)]/8",
+      text: "text-[hsl(145,65%,48%)]",
+      border: "border-[hsl(145,65%,48%)]/20",
+      dot: "bg-[hsl(145,65%,48%)]",
+      glow: "shadow-[0_0_8px_hsl(145,65%,48%,0.15)]",
       label: "IDLE",
     },
     running: {
-      bg: "bg-[#1a2744]",
-      text: "text-[#64b5f6]",
-      border: "border-[#2a4a7a]",
-      dot: "bg-[#64b5f6] animate-pulse",
+      bg: "bg-[hsl(210,85%,60%)]/8",
+      text: "text-[hsl(210,85%,60%)]",
+      border: "border-[hsl(210,85%,60%)]/20",
+      dot: "bg-[hsl(210,85%,60%)]",
+      glow: "shadow-[0_0_12px_hsl(210,85%,60%,0.2)]",
       label: "RUNNING",
     },
     pending_review: {
-      bg: "bg-[#3d2e1a]",
-      text: "text-[#ffb74d]",
-      border: "border-[#6b542e]",
-      dot: "bg-[#ffb74d]",
+      bg: "bg-[hsl(38,90%,58%)]/8",
+      text: "text-[hsl(38,90%,58%)]",
+      border: "border-[hsl(38,90%,58%)]/20",
+      dot: "bg-[hsl(38,90%,58%)]",
+      glow: "shadow-[0_0_12px_hsl(38,90%,58%,0.2)]",
       label: "REVIEW",
     },
     error: {
-      bg: "bg-[#3d1a1a]",
-      text: "text-[#ef5350]",
-      border: "border-[#6b2e2e]",
-      dot: "bg-[#ef5350]",
+      bg: "bg-[hsl(4,80%,58%)]/8",
+      text: "text-[hsl(4,80%,58%)]",
+      border: "border-[hsl(4,80%,58%)]/20",
+      dot: "bg-[hsl(4,80%,58%)]",
+      glow: "shadow-[0_0_12px_hsl(4,80%,58%,0.2)]",
       label: "ERROR",
     },
   };
   const c = config[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold font-mono rounded border ${c.bg} ${c.text} ${c.border}`}>
-      <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.dot}`} />
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold rounded-md border ${c.bg} ${c.text} ${c.border} ${status === "running" ? c.glow : ""}`}>
+      <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.dot} ${status === "running" ? "animate-pulse" : ""}`} />
       {c.label}
     </span>
   );
@@ -64,46 +68,75 @@ export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onKill, onC
   const [continueText, setContinueText] = useState("");
   const isReview = agent.status === "pending_review";
 
+  const glowClass = {
+    idle: "hover:glow-idle",
+    running: "glow-running",
+    pending_review: "glow-review",
+    error: "glow-error",
+  }[agent.status];
+
+  const borderColor = {
+    idle: "border-[hsl(220,12%,18%)]",
+    running: "border-[hsl(210,85%,60%)]/25",
+    pending_review: "border-[hsl(38,90%,58%)]/25",
+    error: "border-[hsl(4,80%,58%)]/25",
+  }[agent.status];
+
   return (
     <div
-      className={`bg-[#141414] rounded-lg border p-3 transition-all duration-200 hover:border-[#444444] ${
-        isReview ? "border-[#6b542e]" : "border-[#222222]"
-      }`}
+      className={`group relative glass rounded-xl border p-3.5 transition-all duration-300 hover:border-[hsl(220,12%,25%)] ${borderColor} ${glowClass}`}
     >
+      {/* Status accent line */}
+      <div
+        className={`absolute left-0 top-3 bottom-3 w-[2px] rounded-full transition-all duration-300 ${
+          agent.status === "idle"
+            ? "bg-[hsl(145,65%,48%)]/40"
+            : agent.status === "running"
+            ? "bg-[hsl(210,85%,60%)]/50"
+            : agent.status === "pending_review"
+            ? "bg-[hsl(38,90%,58%)]/50"
+            : "bg-[hsl(4,80%,58%)]/50"
+        }`}
+      />
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5">
-            <Terminal size={12} className="text-[#555555]" />
-            <span className="text-xs font-mono font-bold text-[#888888]">agent-{agent.id}</span>
+      <div className="flex items-center justify-between mb-3 pl-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Terminal size={12} className="text-[hsl(220,10%,45%)]" />
+            <span className="text-xs font-bold text-[hsl(220,10%,45%)]">agent-{agent.id}</span>
           </div>
           <StatusBadge status={agent.status} />
         </div>
         {agent.status === "running" && agent.started_at && (
-          <div className="flex items-center gap-1 text-xs text-[#555555] font-mono">
-            <Clock size={11} />
+          <div className="flex items-center gap-1 text-[11px] text-[hsl(220,10%,45%)] shrink-0">
+            <Clock size={10} className="opacity-70" />
             {formatElapsed(agent.started_at)}
           </div>
         )}
       </div>
 
       {/* Task */}
-      <div className="mb-3">
+      <div className="mb-3.5 pl-2">
         <div
-          className={`text-sm text-[#b0b0b0] font-mono leading-relaxed ${
+          className={`text-[13px] text-[hsl(210,20%,80%)] leading-relaxed transition-all ${
             showFullTask ? "" : "line-clamp-2"
           }`}
-          onClick={() => setShowFullTask(!showFullTask)}
-          style={{ cursor: agent.task && agent.task.length > 60 ? "pointer" : "default" }}
+          style={{ cursor: agent.task && agent.task.length > 80 ? "pointer" : "default" }}
+          onClick={() => {
+            if (agent.task && agent.task.length > 80) {
+              setShowFullTask(!showFullTask);
+            }
+          }}
         >
           {agent.task || (
-            <span className="text-[#555555] italic">等待任务...</span>
+            <span className="text-[hsl(220,10%,35%)] italic">等待任务...</span>
           )}
         </div>
-        {agent.task && agent.task.length > 60 && (
+        {agent.task && agent.task.length > 80 && (
           <button
             onClick={() => setShowFullTask(!showFullTask)}
-            className="text-[10px] text-[#555555] hover:text-[#888888] mt-1 font-mono"
+            className="text-[10px] text-[hsl(220,10%,45%)] hover:text-[hsl(186,85%,52%)] mt-1.5 transition-colors"
           >
             {showFullTask ? "收起" : "展开"}
           </button>
@@ -111,42 +144,42 @@ export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onKill, onC
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 flex-wrap">
-        <button
+      <div className="flex gap-1.5 flex-wrap pl-2">
+        <ActionButton
           onClick={() => onViewLog(agent.id)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#1a1a2e] text-[#64b5f6] rounded border border-[#2a2a5a] hover:bg-[#202040] transition-colors min-h-[28px] touch-manipulation"
-        >
-          <ScrollText size={12} /> Log
-        </button>
+          icon={<ScrollText size={11} />}
+          label="Log"
+          variant="secondary"
+        />
         {agent.status === "running" && (
-          <button
+          <ActionButton
             onClick={() => onKill(agent.id)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#3d1a1a] text-[#ef5350] rounded border border-[#6b2e2e] hover:bg-[#4d2020] transition-colors min-h-[28px] touch-manipulation"
-          >
-            <Square size={12} /> Kill
-          </button>
+            icon={<Square size={11} />}
+            label="Kill"
+            variant="danger"
+          />
         )}
         {agent.status === "pending_review" && (
           <>
-            <button
+            <ActionButton
               onClick={() => onViewDiff(agent.id)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#1e1e1e] text-[#b0b0b0] rounded border border-[#333333] hover:bg-[#2a2a2a] transition-colors min-h-[28px] touch-manipulation"
-            >
-              <FileText size={12} /> Diff
-            </button>
-            <button
+              icon={<FileText size={11} />}
+              label="Diff"
+              variant="ghost"
+            />
+            <ActionButton
               onClick={() => onApprove(agent.id)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono bg-[#1a2f1a] text-[#4caf50] rounded border border-[#2e5c2e] hover:bg-[#203d20] transition-colors min-h-[28px] touch-manipulation"
-            >
-              <Check size={12} /> Approve
-            </button>
+              icon={<Check size={11} />}
+              label="Approve"
+              variant="success"
+            />
           </>
         )}
       </div>
 
       {/* Continue Task Input */}
       {isReview && onContinue && (
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-3 pl-2 pt-3 border-t border-[hsl(220,12%,18%)]">
           <input
             type="text"
             value={continueText}
@@ -158,7 +191,7 @@ export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onKill, onC
               }
             }}
             placeholder="输入修改要求..."
-            className="flex-1 min-w-0 px-2.5 py-1 text-[11px] font-mono bg-[#0a0a0a] text-[#b0b0b0] rounded border border-[#333333] placeholder:text-[#555555] focus:outline-none focus:border-[#00bcd4] transition-colors"
+            className="flex-1 min-w-0 px-3 py-1.5 text-[11px] bg-[hsl(220,18%,4%)] text-[hsl(210,20%,80%)] rounded-lg border border-[hsl(220,12%,18%)] placeholder:text-[hsl(220,10%,35%)] focus:outline-none focus:border-[hsl(186,85%,52%)]/50 focus:ring-1 focus:ring-[hsl(186,85%,52%)]/10 transition-all"
           />
           <button
             onClick={() => {
@@ -168,12 +201,41 @@ export function AgentCard({ agent, onViewDiff, onViewLog, onApprove, onKill, onC
               }
             }}
             disabled={!continueText.trim()}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-mono bg-[#1a2744] text-[#64b5f6] rounded border border-[#2a4a7a] hover:bg-[#202d50] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] bg-[hsl(210,85%,60%)]/10 text-[hsl(210,85%,60%)] rounded-lg border border-[hsl(210,85%,60%)]/20 hover:bg-[hsl(210,85%,60%)]/15 transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
           >
             <Send size={10} /> 继续
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+function ActionButton({
+  onClick,
+  icon,
+  label,
+  variant,
+}: {
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  variant: "secondary" | "danger" | "success" | "ghost";
+}) {
+  const variants = {
+    secondary: "bg-[hsl(210,85%,60%)]/8 text-[hsl(210,85%,60%)] border-[hsl(210,85%,60%)]/15 hover:bg-[hsl(210,85%,60%)]/12 hover:border-[hsl(210,85%,60%)]/25",
+    danger: "bg-[hsl(4,80%,58%)]/8 text-[hsl(4,80%,58%)] border-[hsl(4,80%,58%)]/15 hover:bg-[hsl(4,80%,58%)]/12 hover:border-[hsl(4,80%,58%)]/25",
+    success: "bg-[hsl(145,65%,48%)]/8 text-[hsl(145,65%,48%)] border-[hsl(145,65%,48%)]/15 hover:bg-[hsl(145,65%,48%)]/12 hover:border-[hsl(145,65%,48%)]/25",
+    ghost: "bg-[hsl(220,14%,12%)] text-[hsl(220,10%,55%)] border-[hsl(220,12%,18%)] hover:bg-[hsl(220,14%,16%)] hover:text-[hsl(210,20%,80%)]",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border transition-all duration-200 min-h-[28px] touch-manipulation ${variants[variant]}`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

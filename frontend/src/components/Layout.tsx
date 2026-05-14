@@ -5,7 +5,7 @@ import { LogViewer } from "./LogViewer";
 import { MessageInput } from "./MessageInput";
 import { MessageQueue } from "./MessageQueue";
 import { useApi } from "@/hooks/useApi";
-import { List, Inbox } from "lucide-react";
+import { LayoutGrid, Inbox, Activity, GitBranch } from "lucide-react";
 
 export function Layout() {
   const { state, error, connected, fetchDiff, approve, kill, addMessage, updateMessage, deleteMessage, clearLog, continueTask } = useApi();
@@ -14,8 +14,6 @@ export function Layout() {
   const [mobileTab, setMobileTab] = useState<"agents" | "messages">("agents");
   const agentsScrollRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
-
-  // Preserve scroll positions across re-renders
   const agentsScrollPos = useRef(0);
   const messagesScrollPos = useRef(0);
 
@@ -53,55 +51,77 @@ export function Layout() {
   const idleCount = state?.agents?.filter((a) => a.status === "idle").length || 0;
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a] text-[#d4d4d4] overflow-hidden">
+    <div className="h-screen flex flex-col bg-[hsl(220,18%,4%)] text-[hsl(210,20%,85%)] overflow-hidden noise-bg">
       {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-3 lg:px-4 py-2.5 bg-[#111111] border-b border-[#222222]">
-        <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-          <span className="text-sm font-bold tracking-wider text-[#00bcd4] font-mono shrink-0">MAW</span>
-          {state?.cwd && (
-            <span
-              className="hidden lg:block text-xs text-[#666666] font-mono truncate max-w-[200px] xl:max-w-[280px]"
-              title={state.cwd}
-            >
-              {state.cwd}
-            </span>
-          )}
-          <span
-            className={`flex items-center gap-1.5 text-xs font-mono shrink-0 ${
-              connected ? "text-[#4caf50]" : "text-[#ff9800]"
-            }`}
-          >
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${connected ? "bg-[#4caf50]" : "bg-[#ff9800] animate-pulse"}`} />
-            <span className="hidden sm:inline">{connected ? "online" : error || "reconnecting"}</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2 lg:gap-4 text-xs font-mono shrink-0">
-          <div className="hidden md:flex items-center gap-1.5">
-            <span className="text-[#888888]">agents</span>
-            <span className="text-[#d4d4d4] font-bold">{state?.agents?.length || 0}</span>
-          </div>
-          <div className="hidden md:block w-px h-3 bg-[#333333]" />
-          <div className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#2196f3]" />
-            <span className="text-[#888888] hidden sm:inline">running</span>
-            <span className="text-[#2196f3] font-bold">{runningCount}</span>
-          </div>
-          <div className="w-px h-3 bg-[#333333]" />
-          <div className="flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ff9800]" />
-            <span className="text-[#888888] hidden sm:inline">review</span>
-            <span className="text-[#ff9800] font-bold">{reviewCount}</span>
-          </div>
-          <div className="w-px h-3 bg-[#333333] hidden sm:block" />
-          <div className="hidden sm:flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#4caf50]" />
-            <span className="text-[#888888]">idle</span>
-            <span className="text-[#4caf50] font-bold">{idleCount}</span>
-          </div>
-          <div className="w-px h-3 bg-[#333333] hidden sm:block" />
-          <div className="flex items-center gap-1">
-            <span className="text-[#888888] hidden sm:inline">queued</span>
-            <span className="text-[#d4d4d4] font-bold">{state?.pending_messages?.length || 0}</span>
+      <header className="shrink-0 relative z-10">
+        <div className="glass-strong border-b border-[hsl(220,12%,18%)]">
+          <div className="flex items-center justify-between px-4 lg:px-5 py-3">
+            {/* Left: Logo + project */}
+            <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="relative">
+                  <div className="w-7 h-7 rounded-lg bg-[hsl(186,85%,52%)]/10 border border-[hsl(186,85%,52%)]/30 flex items-center justify-center">
+                    <GitBranch size={14} className="text-[hsl(186,85%,52%)]" />
+                  </div>
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[hsl(186,85%,52%)] animate-pulse" />
+                </div>
+                <span className="text-sm font-bold tracking-[0.12em] text-gradient uppercase">MAW</span>
+              </div>
+
+              {state?.cwd && (
+                <span
+                  className="hidden lg:block text-[11px] text-[hsl(220,10%,45%)] truncate max-w-[180px] xl:max-w-[260px]"
+                  title={state.cwd}
+                >
+                  {state.cwd}
+                </span>
+              )}
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`inline-block w-1.5 h-1.5 rounded-full ${connected ? "bg-[hsl(145,65%,48%)]" : "bg-[hsl(38,90%,58%)] animate-pulse"}`} />
+                <span className={`text-[11px] hidden sm:inline ${connected ? "text-[hsl(145,65%,48%)]" : "text-[hsl(38,90%,58%)]"}`}>
+                  {connected ? "connected" : error || "reconnecting"}
+                </span>
+              </div>
+            </div>
+
+            {/* Right: Stats */}
+            <div className="flex items-center gap-1 lg:gap-1.5 text-[11px] shrink-0">
+              <StatPill
+                icon={<Activity size={10} />}
+                label="agents"
+                value={state?.agents?.length || 0}
+                color="foreground"
+                hideLabel
+              />
+              <div className="hidden md:block w-px h-3 bg-[hsl(220,12%,18%)] mx-1" />
+              <StatPill
+                icon={<span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(210,85%,60%)]" />}
+                label="running"
+                value={runningCount}
+                color="running"
+              />
+              <StatPill
+                icon={<span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(38,90%,58%)]" />}
+                label="review"
+                value={reviewCount}
+                color="review"
+              />
+              <StatPill
+                icon={<span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(145,65%,48%)]" />}
+                label="idle"
+                value={idleCount}
+                color="idle"
+                hiddenOnMobile
+              />
+              <div className="hidden sm:block w-px h-3 bg-[hsl(220,12%,18%)] mx-1" />
+              <StatPill
+                label="queued"
+                value={state?.pending_messages?.length || 0}
+                color="foreground"
+                hiddenOnMobile
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -110,74 +130,72 @@ export function Layout() {
       <MessageInput onSubmit={addMessage} />
 
       {/* Mobile Tab Switcher */}
-      <div className="lg:hidden shrink-0 flex border-b border-[#222222] bg-[#111111]">
-        <button
-          onClick={() => setMobileTab("agents")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono font-bold transition-colors ${
-            mobileTab === "agents"
-              ? "text-[#00bcd4] border-b-2 border-[#00bcd4] bg-[#00bcd4]/5"
-              : "text-[#666666]"
-          }`}
-        >
-          <List size={13} />
-          Agents ({state?.agents?.length || 0})
-        </button>
-        <button
-          onClick={() => setMobileTab("messages")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono font-bold transition-colors ${
-            mobileTab === "messages"
-              ? "text-[#00bcd4] border-b-2 border-[#00bcd4] bg-[#00bcd4]/5"
-              : "text-[#666666]"
-          }`}
-        >
-          <Inbox size={13} />
-          Queue ({state?.pending_messages?.length || 0})
-        </button>
+      <div className="lg:hidden shrink-0 relative z-10">
+        <div className="flex glass border-b border-[hsl(220,12%,18%)]">
+          <MobileTab
+            active={mobileTab === "agents"}
+            onClick={() => setMobileTab("agents")}
+            icon={<LayoutGrid size={13} />}
+            label="Agents"
+            count={state?.agents?.length || 0}
+          />
+          <MobileTab
+            active={mobileTab === "messages"}
+            onClick={() => setMobileTab("messages")}
+            icon={<Inbox size={13} />}
+            label="Queue"
+            count={state?.pending_messages?.length || 0}
+          />
+        </div>
       </div>
 
-      {/* Main Content - Desktop: side-by-side, Mobile: tabs */}
-      <div className="flex-1 flex min-h-0">
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0 relative z-[1]">
         {/* Agents Panel */}
         <div
           className={`${
             mobileTab === "agents" ? "flex" : "hidden lg:flex"
-          } flex-1 min-w-0 flex-col lg:border-r border-[#222222]`}
+          } flex-1 min-w-0 flex-col lg:border-r border-[hsl(220,12%,18%)]`}
         >
-          <div className="shrink-0 px-4 py-2 border-b border-[#222222] hidden lg:block">
-            <h2 className="text-xs font-bold text-[#666666] uppercase tracking-wider font-mono">
-              Agents ({state?.agents?.length || 0})
-            </h2>
-          </div>
+          <PanelHeader
+            title="Agents"
+            count={state?.agents?.length || 0}
+          />
           <div
             ref={agentsScrollRef}
             onScroll={handleAgentsScroll}
             className="flex-1 min-h-0 overflow-y-auto p-3 lg:p-4"
           >
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-              {state?.agents?.map((agent) => (
-                <AgentCard
+              {state?.agents?.map((agent, i) => (
+                <div
                   key={agent.id}
-                  agent={agent}
-                  onViewDiff={handleViewDiff}
-                  onViewLog={handleViewLog}
-                  onApprove={async (id) => {
-                    try {
-                      await approve(id);
-                    } catch (e: unknown) {
-                      const msg = e instanceof Error ? e.message : String(e);
-                      alert(`Approve failed: ${msg}`);
-                    }
-                  }}
-                  onKill={async (id) => {
-                    try {
-                      await kill(id);
-                    } catch (e: unknown) {
-                      const msg = e instanceof Error ? e.message : String(e);
-                      alert(`Kill failed: ${msg}`);
-                    }
-                  }}
-                  onContinue={continueTask}
-                />
+                  className="animate-[fade-in-up_0.4s_ease-out_forwards]"
+                  style={{ animationDelay: `${Math.min(i * 0.05, 0.4)}s`, opacity: 0 }}
+                >
+                  <AgentCard
+                    agent={agent}
+                    onViewDiff={handleViewDiff}
+                    onViewLog={handleViewLog}
+                    onApprove={async (id) => {
+                      try {
+                        await approve(id);
+                      } catch (e: unknown) {
+                        const msg = e instanceof Error ? e.message : String(e);
+                        alert(`Approve failed: ${msg}`);
+                      }
+                    }}
+                    onKill={async (id) => {
+                      try {
+                        await kill(id);
+                      } catch (e: unknown) {
+                        const msg = e instanceof Error ? e.message : String(e);
+                        alert(`Kill failed: ${msg}`);
+                      }
+                    }}
+                    onContinue={continueTask}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -187,13 +205,12 @@ export function Layout() {
         <div
           className={`${
             mobileTab === "messages" ? "flex" : "hidden lg:flex"
-          } w-full lg:w-96 shrink-0 flex-col bg-[#0e0e0e]`}
+          } w-full lg:w-[360px] xl:w-96 shrink-0 flex-col`}
         >
-          <div className="shrink-0 px-4 py-2 border-b border-[#222222] hidden lg:block">
-            <h2 className="text-xs font-bold text-[#666666] uppercase tracking-wider font-mono">
-              Message Queue ({state?.pending_messages?.length || 0})
-            </h2>
-          </div>
+          <PanelHeader
+            title="Message Queue"
+            count={state?.pending_messages?.length || 0}
+          />
           <div
             ref={messagesScrollRef}
             onScroll={handleMessagesScroll}
@@ -235,6 +252,78 @@ export function Layout() {
           onClearLog={clearLog}
         />
       )}
+    </div>
+  );
+}
+
+function StatPill({
+  icon,
+  label,
+  value,
+  color,
+  hideLabel,
+  hiddenOnMobile,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: number;
+  color: "foreground" | "running" | "review" | "idle";
+  hideLabel?: boolean;
+  hiddenOnMobile?: boolean;
+}) {
+  const colorMap = {
+    foreground: "text-[hsl(210,20%,85%)]",
+    running: "text-[hsl(210,85%,60%)]",
+    review: "text-[hsl(38,90%,58%)]",
+    idle: "text-[hsl(145,65%,48%)]",
+  };
+
+  return (
+    <div className={`flex items-center gap-1 px-2 py-1 rounded-md bg-[hsl(220,14%,12%)] border border-[hsl(220,12%,18%)] ${hiddenOnMobile ? "hidden sm:flex" : "flex"}`}>
+      {icon && <span className="opacity-70">{icon}</span>}
+      {!hideLabel && <span className="text-[hsl(220,10%,45%)] hidden lg:inline">{label}</span>}
+      <span className={`font-bold ${colorMap[color]}`}>{value}</span>
+    </div>
+  );
+}
+
+function MobileTab({
+  active,
+  onClick,
+  icon,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold transition-all duration-200 ${
+        active
+          ? "text-[hsl(186,85%,52%)] border-b-2 border-[hsl(186,85%,52%)] bg-[hsl(186,85%,52%)]/5"
+          : "text-[hsl(220,10%,45%)] hover:text-[hsl(210,20%,70%)]"
+      }`}
+    >
+      {icon}
+      {label} ({count})
+    </button>
+  );
+}
+
+function PanelHeader({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="shrink-0 px-4 py-2.5 border-b border-[hsl(220,12%,18%)] hidden lg:flex items-center justify-between">
+      <h2 className="text-[11px] font-bold text-[hsl(220,10%,45%)] uppercase tracking-[0.15em]">
+        {title}
+      </h2>
+      <span className="text-[11px] font-bold text-[hsl(220,10%,45%)] bg-[hsl(220,14%,12%)] px-2 py-0.5 rounded-md border border-[hsl(220,12%,18%)]">
+        {count}
+      </span>
     </div>
   );
 }

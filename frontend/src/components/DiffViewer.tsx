@@ -1,4 +1,5 @@
-import { X, Check, GitBranch } from "lucide-react";
+import { X, Check, GitBranch, Copy, CheckCheck } from "lucide-react";
+import { useState } from "react";
 
 interface DiffViewerProps {
   diff: string;
@@ -26,74 +27,103 @@ function parseDiff(diff: string) {
 
 export function DiffViewer({ diff, agentId, onClose, onApprove }: DiffViewerProps) {
   const lines = parseDiff(diff);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(diff);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#111111] rounded-xl border border-[#2a2a2a] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl shadow-black/50">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-[fade-in-up_0.2s_ease-out]">
+      <div className="glass-strong rounded-2xl border border-[hsl(220,12%,18%)] w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl shadow-black/60">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#222222]">
-          <div className="flex items-center gap-2.5">
-            <GitBranch size={14} className="text-[#00bcd4]" />
-            <h3 className="text-sm font-mono font-bold text-[#d4d4d4]">
-              agent/{agentId} <span className="text-[#555555]">&rarr;</span> main
-            </h3>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[hsl(220,12%,18%)]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[hsl(186,85%,52%)]/10 border border-[hsl(186,85%,52%)]/20 flex items-center justify-center">
+              <GitBranch size={14} className="text-[hsl(186,85%,52%)]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[hsl(210,20%,85%)]">
+                agent/{agentId} <span className="text-[hsl(220,10%,35%)]">→</span> main
+              </h3>
+              <span className="text-[10px] text-[hsl(220,10%,45%)]">
+                {lines.length} lines
+              </span>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-[#555555] hover:text-[#d4d4d4] transition-colors"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="p-2 text-[hsl(220,10%,45%)] hover:text-[hsl(210,20%,80%)] rounded-lg hover:bg-[hsl(220,14%,12%)] transition-all"
+              title="Copy diff"
+            >
+              {copied ? <CheckCheck size={14} className="text-[hsl(145,65%,48%)]" /> : <Copy size={14} />}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-[hsl(220,10%,45%)] hover:text-[hsl(210,20%,80%)] rounded-lg hover:bg-[hsl(220,14%,12%)] transition-all"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Diff Content */}
-        <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed">
+        <div className="flex-1 overflow-auto p-0 font-mono text-xs leading-relaxed bg-[hsl(220,20%,3%)]">
           {lines.length === 0 || (lines.length === 1 && !lines[0].content) ? (
-            <div className="text-[#555555] italic text-center py-8">No changes to display</div>
+            <div className="text-[hsl(220,10%,35%)] italic text-center py-16">No changes to display</div>
           ) : (
-            lines.map((line, i) => {
-              const baseClass = "px-3 py-0.5 whitespace-pre rounded-sm w-max min-w-full";
-              if (line.type === "add") {
+            <div className="py-2">
+              {lines.map((line, i) => {
+                const baseClass = "px-4 py-[2px] whitespace-pre w-full";
+                if (line.type === "add") {
+                  return (
+                    <div key={i} className={`${baseClass} bg-[hsl(145,50%,12%)]/30 text-[hsl(145,60%,55%)] border-l-2 border-[hsl(145,65%,48%)]/40`}>
+                      {line.content}
+                    </div>
+                  );
+                }
+                if (line.type === "del") {
+                  return (
+                    <div key={i} className={`${baseClass} bg-[hsl(4,50%,12%)]/30 text-[hsl(4,70%,60%)] border-l-2 border-[hsl(4,80%,58%)]/40`}>
+                      {line.content}
+                    </div>
+                  );
+                }
+                if (line.type === "chunk") {
+                  return (
+                    <div key={i} className={`${baseClass} text-[hsl(220,10%,50%)] bg-[hsl(220,14%,10%)]/50 mt-1 mb-1 font-bold border-y border-[hsl(220,12%,15%)] py-1`}>
+                      {line.content}
+                    </div>
+                  );
+                }
                 return (
-                  <div key={i} className={`${baseClass} bg-[#0d2818] text-[#4ade80]`}>
-                    {line.content}
+                  <div key={i} className={`${baseClass} text-[hsl(220,10%,55%)]`}>
+                    {line.content || " "}
                   </div>
                 );
-              }
-              if (line.type === "del") {
-                return (
-                  <div key={i} className={`${baseClass} bg-[#2a0a0a] text-[#f87171]`}>
-                    {line.content}
-                  </div>
-                );
-              }
-              if (line.type === "chunk") {
-                return (
-                  <div key={i} className={`${baseClass} text-[#888888] bg-[#1a1a1a] mt-1 mb-1 font-bold`}>
-                    {line.content}
-                  </div>
-                );
-              }
-              return (
-                <div key={i} className={`${baseClass} text-[#a0a0a0]`}>
-                  {line.content || " "}
-                </div>
-              );
-            })
+              })}
+            </div>
           )}
         </div>
 
         {/* Footer Actions */}
-        <div className="flex gap-2 px-5 py-3.5 border-t border-[#222222]">
+        <div className="flex gap-2 px-5 py-4 border-t border-[hsl(220,12%,18%)]">
           <button
-            onClick={() => { onApprove(); }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold bg-[#1a2f1a] text-[#4caf50] rounded-lg border border-[#2e5c2e] hover:bg-[#203d20] transition-colors"
+            onClick={onApprove}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold bg-[hsl(145,65%,48%)]/10 text-[hsl(145,65%,48%)] rounded-xl border border-[hsl(145,65%,48%)]/20 hover:bg-[hsl(145,65%,48%)]/15 hover:border-[hsl(145,65%,48%)]/30 transition-all"
           >
-            <Check size={12} /> Approve & Merge
+            <Check size={13} /> Approve & Merge
           </button>
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono text-[#888888] rounded-lg border border-[#333333] hover:bg-[#1a1a1a] transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs text-[hsl(220,10%,45%)] rounded-xl border border-[hsl(220,12%,18%)] hover:bg-[hsl(220,14%,12%)] hover:text-[hsl(210,20%,80%)] transition-all"
           >
             Close
           </button>
