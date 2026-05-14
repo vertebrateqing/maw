@@ -24,25 +24,14 @@ maw_state_init() {
   state_file="${root}/.maw/state.json"
 
   if [[ ! -f "$state_file" ]]; then
-    cat > "$state_file" << 'JSON'
-{
-  "version": "1.0",
-  "project": "",
-  "agents": [],
-  "pending_messages": [],
-  "created_at": ""
-}
-JSON
+    if ! command -v jq &> /dev/null; then
+      maw_die "jq is required. Install with: sudo apt-get install jq (Linux) or brew install jq (macOS)"
+    fi
     local timestamp
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    if command -v jq &> /dev/null; then
-      jq --arg ts "$timestamp" --arg proj "$(basename "$root")" \
-         '.created_at = $ts | .project = $proj' "$state_file" > "${state_file}.tmp"
-      mv "${state_file}.tmp" "$state_file"
-    else
-      sed -i "s/\"created_at\": \"\"/\"created_at\": \"$timestamp\"/" "$state_file"
-      sed -i "s/\"project\": \"\"/\"project\": \"$(basename "$root")\"/" "$state_file"
-    fi
+    jq -n --arg ts "$timestamp" --arg proj "$(basename "$root")" \
+       '{version: "1.0", project: $proj, agents: [], pending_messages: [], created_at: $ts}' \
+       > "$state_file"
   fi
 
   maw_log info "Initialized MAW state in ${root}"
@@ -59,17 +48,13 @@ maw_state_add_agent() {
   local timestamp
   timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-  if command -v jq &> /dev/null; then
-    jq --argjson id "$id" \
-       --arg worktree "$worktree" \
-       --arg branch "$branch" \
-       --arg ts "$timestamp" \
-       '.agents += [{"id": $id, "worktree": $worktree, "branch": $branch, "status": "idle", "task": "", "pid": null, "started_at": null, "completed_at": null, "config": {"auto_pull": false, "auto_test": true}}]' \
-       "$state_file" > "${state_file}.tmp"
-    mv "${state_file}.tmp" "$state_file"
-  else
-    maw_die "jq is required for state management. Install it with: sudo apt-get install jq"
-  fi
+  jq --argjson id "$id" \
+     --arg worktree "$worktree" \
+     --arg branch "$branch" \
+     --arg ts "$timestamp" \
+     '.agents += [{"id": $id, "worktree": $worktree, "branch": $branch, "status": "idle", "task": "", "pid": null, "started_at": null, "completed_at": null, "config": {"auto_pull": false, "auto_test": true}}]' \
+     "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
 }
 
 # maw_state_update_agent <id> <status> [task] [pid]
@@ -83,25 +68,23 @@ maw_state_update_agent() {
   local timestamp
   timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-  if command -v jq &> /dev/null; then
-    local jq_filter
-    jq_filter=".agents |= map(if .id == $id then .status = \"$status\""
-    if [[ -n "$task" ]]; then
-      jq_filter+=" | .task = \"$task\""
-    fi
-    if [[ "$pid" != "null" && "$pid" != "" ]]; then
-      jq_filter+=" | .pid = $pid"
-    fi
-    if [[ "$status" == "running" ]]; then
-      jq_filter+=" | .started_at = \"$timestamp\""
-    elif [[ "$status" == "done" || "$status" == "error" ]]; then
-      jq_filter+=" | .completed_at = \"$timestamp\" | .pid = null"
-    fi
-    jq_filter+=" else . end)"
-
-    jq "$jq_filter" "$state_file" > "${state_file}.tmp"
-    mv "${state_file}.tmp" "$state_file"
+  local jq_filter
+  jq_filter=".agents |= map(if .id == $id then .status = \"$status\""
+  if [[ -n "$task" ]]; then
+    jq_filter+=" | .task = \"$task\""
   fi
+  if [[ "$pid" != "null" && "$pid" != "" ]]; then
+    jq_filter+=" | .pid = $pid"
+  fi
+  if [[ "$status" == "running" ]]; then
+    jq_filter+=" | .started_at = \"$timestamp\""
+  elif [[ "$status" == "done" || "$status" == "error" ]]; then
+    jq_filter+=" | .completed_at = \"$timestamp\" | .pid = null"
+  fi
+  jq_filter+=" else . end)"
+
+  jq "$jq_filter" "$state_file" > "${state_file}.tmp"
+  mv "${state_file}.tmp" "$state_file"
 }
 
 # maw_state_get_agent_status <id>
@@ -200,25 +183,6 @@ maw_state_list_messages() {
   local state_file
   state_file="$(maw_state_file)"
   jq '.pending_messages' "$state_file"
-}
-
-# maw_state_shift_message - removes and returns the first message
-maw_state_shift_message() {
-  local state_file
-  state_file="$(maw_state_file)"
-  local msg
-  msg=$(jq '.pending_messages | first' "$state_file")
-  if [[ "$msg" == "null" ]]; then
-    echo ""
-    return
-  fi
-  local msg_id
-  msg_id=$(echo "$msg" | jq -r '.id')
-  jq --arg id "$msg_id" \
-     '.pending_messages |= map(select(.id != $id))' \
-     "$state_file" > "${state_file}.tmp"
-  mv "${state_file}.tmp" "$state_file"
-  echo "$msg"
 }
 
 # maw_state_update_agent_config <id> <key> <value>

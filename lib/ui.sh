@@ -60,8 +60,13 @@ maw_ui_elapsed_time() {
     return
   fi
 
+  # GNU date understands -d; BSD date (macOS) needs -j -f. Fall back to "now"
+  # if both fail so we never crash the status board on a malformed timestamp.
   local start_epoch now_epoch elapsed
-  start_epoch=$(date -d "$start" +%s 2>/dev/null || date +%s)
+  start_epoch=$(date -d "$start" +%s 2>/dev/null \
+    || date -j -f "%Y-%m-%dT%H:%M:%SZ" "${start%%.*}Z" +%s 2>/dev/null \
+    || date -j -f "%Y-%m-%dT%H:%M:%S" "${start%%.*}" +%s 2>/dev/null \
+    || date +%s)
   now_epoch=$(date +%s)
   elapsed=$((now_epoch - start_epoch))
 

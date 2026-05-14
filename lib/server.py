@@ -41,7 +41,7 @@ _maw_bin_dir = str(MAW_INSTALL_DIR / "bin")
 if _maw_bin_dir not in os.environ.get("PATH", ""):
     os.environ["PATH"] = _maw_bin_dir + os.pathsep + os.environ.get("PATH", "")
 
-app = FastAPI(title="MAW Server", version="0.2.2")
+app = FastAPI(title="MAW Server", version="0.2.3")
 
 _dispatcher = None
 

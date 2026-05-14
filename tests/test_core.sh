@@ -31,11 +31,4 @@ test_maw_ensure_dir() {
   rm -rf "$tmpdir"
 }
 
-test_maw_config_get() {
-  export MAW_MAX_AGENTS="8"
-  assert_eq "$(maw_config_get MAW_MAX_AGENTS 4)" "8"
-  assert_eq "$(maw_config_get MAW_UNDEFINED 4)" "4"
-  unset MAW_MAX_AGENTS
-}
-
 run_tests "$0"

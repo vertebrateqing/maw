@@ -1,3 +1,5 @@
+# Linux systemd unit for MAW.
+# macOS users: see the README for tmux / launchd alternatives.
 [Unit]
 Description=MAW Server - Multi-Agent Workspace Dashboard
 After=network.target

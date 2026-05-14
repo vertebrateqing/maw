@@ -30,21 +30,6 @@ maw_git_worktree_create() {
   fi
 }
 
-# maw_git_worktree_remove <agent_id>
-maw_git_worktree_remove() {
-  local id="$1"
-  local root
-  root="$(maw_project_root)"
-  local worktree
-  worktree="$(maw_agents_dir)/agent-${id}"
-
-  if [[ -d "$worktree" ]]; then
-    git -C "$root" worktree remove "$worktree" 2>/dev/null || \
-      git -C "$root" worktree remove --force "$worktree"
-    maw_log info "Removed worktree: agent-${id}"
-  fi
-}
-
 # maw_git_worktree_reset <agent_id>
 # Resets the agent worktree to match main branch
 maw_git_worktree_reset() {
@@ -111,15 +96,4 @@ maw_git_merge_agent() {
     maw_log error "Merge conflict when merging agent/${id}. Please resolve manually."
     return 1
   fi
-}
-
-# maw_git_agent_commit <agent_id> <message>
-maw_git_agent_commit() {
-  local id="$1"
-  local message="$2"
-  local worktree
-  worktree="$(maw_agents_dir)/agent-${id}"
-
-  git -C "$worktree" add -A
-  git -C "$worktree" commit -m "$message" || maw_log warn "Nothing to commit in agent-${id}"
 }

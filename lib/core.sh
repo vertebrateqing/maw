@@ -18,8 +18,10 @@ maw_log() {
   local level="$1"
   local message="$2"
   local color=""
-  local timestamp
+  local timestamp level_upper
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+  # Upper-case via tr for bash 3.2 compatibility (macOS default shell).
+  level_upper=$(printf '%s' "$level" | tr '[:lower:]' '[:upper:]')
 
   case "$level" in
     debug) color="${MAW_CYAN}" ;;
@@ -30,9 +32,9 @@ maw_log() {
   esac
 
   if [[ -t 2 ]]; then
-    echo -e "${color}[${level^^}]${MAW_RESET} ${timestamp} ${message}" >&2
+    printf '%b[%s]%b %s %s\n' "$color" "$level_upper" "$MAW_RESET" "$timestamp" "$message" >&2
   else
-    echo "[${level^^}] ${timestamp} ${message}" >&2
+    printf '[%s] %s %s\n' "$level_upper" "$timestamp" "$message" >&2
   fi
 }
 
@@ -50,15 +52,6 @@ maw_ensure_dir() {
   if [[ ! -d "$path" ]]; then
     mkdir -p "$path" || maw_die "Failed to create directory: $path"
   fi
-}
-
-# maw_config_get <var_name> <default_value>
-maw_config_get() {
-  local var_name="$1"
-  local default_value="$2"
-  local value
-  value="${!var_name:-$default_value}"
-  echo "$value"
 }
 
 # maw_project_root - find the git project root
