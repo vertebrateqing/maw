@@ -5,6 +5,7 @@ import { LogViewer } from "./LogViewer";
 import { MessageInput } from "./MessageInput";
 import { MessageQueue } from "./MessageQueue";
 import { useApi } from "@/hooks/useApi";
+import { ProjectPath } from "./ProjectPath";
 import { List, Inbox } from "lucide-react";
 
 export function Layout() {
@@ -58,14 +59,7 @@ export function Layout() {
       <header className="shrink-0 flex items-center justify-between px-3 lg:px-4 py-2.5 bg-[#111111] border-b border-[#222222]">
         <div className="flex items-center gap-2 lg:gap-3 min-w-0">
           <span className="text-sm font-bold tracking-wider text-[#00bcd4] font-mono shrink-0">MAW</span>
-          {state?.cwd && (
-            <span
-              className="hidden lg:block text-xs text-[#666666] font-mono truncate max-w-[200px] xl:max-w-[280px]"
-              title={state.cwd}
-            >
-              {state.cwd}
-            </span>
-          )}
+          {state?.cwd && <ProjectPath path={state.cwd} />}
           <span
             className={`flex items-center gap-1.5 text-xs font-mono shrink-0 ${
               connected ? "text-[#4caf50]" : "text-[#ff9800]"
