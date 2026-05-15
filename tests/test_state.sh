@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/core.sh"
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/state.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/mawlib/core.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/mawlib/state.sh"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/tests/test_helper.sh"
 
 setup() {

@@ -10,7 +10,7 @@ _bad_patterns="${BASH_SOURCE[0]}.bad_patterns"
 
 test_no_bash4_parameter_expansions() {
   local files=(
-    lib/core.sh lib/state.sh lib/ui.sh lib/git.sh
+    mawlib/core.sh mawlib/state.sh mawlib/ui.sh mawlib/git.sh
     bin/maw bin/maw-server
   )
 
@@ -33,7 +33,7 @@ test_no_declare_associative_array() {
   local found=""
   while IFS= read -r line; do
     found="$found$line\n"
-  done < <(grep -nP '\bdeclare\s+-A\b' lib/*.sh bin/* 2>/dev/null || true)
+  done < <(grep -nP '\bdeclare\s+-A\b' mawlib/*.sh bin/* 2>/dev/null || true)
 
   if [[ -n "$found" ]]; then
     echo "  FAIL: bash-4-only associative arrays found:" >&2
@@ -46,9 +46,9 @@ test_no_declare_associative_array() {
 
 test_no_gnu_date_in_ui() {
   local raw
-  raw=$(grep -nP '\bdate\s+-d\s+' lib/ui.sh 2>/dev/null || true)
+  raw=$(grep -nP '\bdate\s+-d\s+' mawlib/ui.sh 2>/dev/null || true)
   if [[ -z "$raw" ]]; then
-    echo "  PASS: no GNU-only date -d in lib/ui.sh"
+    echo "  PASS: no GNU-only date -d in mawlib/ui.sh"
     return 0
   fi
 
@@ -58,9 +58,9 @@ test_no_gnu_date_in_ui() {
     local lineno
     lineno=$(echo "$line" | cut -d: -f1)
     local context
-    context=$(sed -n "${lineno},$((lineno + 3))p" lib/ui.sh)
+    context=$(sed -n "${lineno},$((lineno + 3))p" mawlib/ui.sh)
     if [[ "$context" != *"||"* ]]; then
-      echo "  FAIL: lib/ui.sh contains bare GNU-only 'date -d' (no fallback): $line" >&2
+      echo "  FAIL: mawlib/ui.sh contains bare GNU-only 'date -d' (no fallback): $line" >&2
       return 1
     fi
   done <<< "$raw"

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Ensure lib/ is importable
+# Ensure mawlib/ is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
@@ -17,8 +17,8 @@ from fastapi.testclient import TestClient
 def mock_startup():
     """Prevent background threads from starting during tests."""
     with (
-        patch("lib.server.get_dispatcher", return_value=MagicMock()),
-        patch("lib.server.get_broadcaster", return_value=MagicMock()),
+        patch("mawlib.server.get_dispatcher", return_value=MagicMock()),
+        patch("mawlib.server.get_broadcaster", return_value=MagicMock()),
     ):
         yield
 
@@ -27,14 +27,14 @@ def mock_startup():
 def client(mock_startup):
     """Create a TestClient with mocked dependencies."""
     # Import app after patching startup
-    from lib.server import app
+    from mawlib.server import app
 
     return TestClient(app)
 
 
 class TestApiStatus:
     def test_status_no_state_file(self, client):
-        with patch("lib.server.Path.exists", return_value=False):
+        with patch("mawlib.server.Path.exists", return_value=False):
             response = client.get("/api/status")
         assert response.status_code == 200
         data = response.json()
@@ -47,7 +47,7 @@ class TestApiStatus:
         state_file = tmp_path / ".maw" / "state.json"
         state_file.parent.mkdir(parents=True)
         state_file.write_text(json.dumps(state))
-        with patch("lib.server.MAW_DIR", tmp_path):
+        with patch("mawlib.server.MAW_DIR", tmp_path):
             response = client.get("/api/status")
         assert response.status_code == 200
         data = response.json()
@@ -57,7 +57,7 @@ class TestApiStatus:
 
 class TestApiMessages:
     def test_get_messages_empty(self, client):
-        with patch("lib.server.Path.exists", return_value=False):
+        with patch("mawlib.server.Path.exists", return_value=False):
             response = client.get("/api/messages")
         assert response.status_code == 200
         assert response.json() == []
@@ -67,14 +67,14 @@ class TestApiMessages:
         state_file = tmp_path / ".maw" / "state.json"
         state_file.parent.mkdir(parents=True)
         state_file.write_text(json.dumps(state))
-        with patch("lib.server.MAW_DIR", tmp_path):
+        with patch("mawlib.server.MAW_DIR", tmp_path):
             response = client.get("/api/messages")
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]["content"] == "hello"
 
     def test_create_message_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="msg-1\n", stderr="")
             response = client.post("/api/messages", json={"content": "test task"})
         assert response.status_code == 200
@@ -87,13 +87,13 @@ class TestApiMessages:
         assert response.status_code == 400
 
     def test_create_message_queue_failure(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="queue full")
             response = client.post("/api/messages", json={"content": "test"})
         assert response.status_code == 500
 
     def test_update_message_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             response = client.put("/api/messages/msg-1", json={"content": "updated"})
         assert response.status_code == 200
@@ -105,7 +105,7 @@ class TestApiMessages:
         assert response.status_code == 400
 
     def test_delete_message_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             response = client.delete("/api/messages/msg-1")
         assert response.status_code == 200
@@ -114,7 +114,7 @@ class TestApiMessages:
 
 class TestApiDiff:
     def test_diff_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="+added line\n", stderr="")
             response = client.get("/api/diff/1")
         assert response.status_code == 200
@@ -125,7 +125,7 @@ class TestApiDiff:
 
 class TestApiApprove:
     def test_approve_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             response = client.post("/api/approve/1")
         assert response.status_code == 200
@@ -133,7 +133,7 @@ class TestApiApprove:
         assert response.json()["agent_id"] == 1
 
     def test_approve_failure(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="merge conflict")
             response = client.post("/api/approve/1")
         assert response.status_code == 400
@@ -141,14 +141,14 @@ class TestApiApprove:
 
 class TestApiReject:
     def test_reject_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             response = client.post("/api/reject/1")
         assert response.status_code == 200
         assert response.json()["status"] == "rejected"
 
     def test_reject_failure(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
             response = client.post("/api/reject/1")
         assert response.status_code == 500
@@ -156,7 +156,7 @@ class TestApiReject:
 
 class TestApiKill:
     def test_kill_success(self, client):
-        with patch("lib.server.kill_agent") as mock_kill:
+        with patch("mawlib.server.kill_agent") as mock_kill:
             response = client.post("/api/kill/1")
         assert response.status_code == 200
         assert response.json()["status"] == "killed"
@@ -165,7 +165,7 @@ class TestApiKill:
 
 class TestApiLog:
     def test_log_not_found(self, client):
-        with patch("lib.server.Path.exists", return_value=False):
+        with patch("mawlib.server.Path.exists", return_value=False):
             response = client.get("/api/log/1")
         assert response.status_code == 200
         assert response.json()["log"] == ""
@@ -175,8 +175,8 @@ class TestApiLog:
         log_file = tmp_path / ".maw" / "logs" / "agent-1.log"
         log_file.parent.mkdir(parents=True)
         log_file.write_text("line1\nline2\nline3\n")
-        with patch("lib.server.MAW_DIR", tmp_path):
-            with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.MAW_DIR", tmp_path):
+            with patch("mawlib.server.subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(returncode=0, stdout="line2\nline3\n", stderr="")
                 response = client.get("/api/log/1?lines=2")
         assert response.status_code == 200
@@ -185,7 +185,7 @@ class TestApiLog:
 
 class TestApiAgentConfig:
     def test_config_success(self, client):
-        with patch("lib.server.subprocess.run") as mock_run:
+        with patch("mawlib.server.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             response = client.put(
                 "/api/agents/1/config",
@@ -211,7 +211,7 @@ class TestApiDispatch:
     def test_dispatch_success(self, client):
         mock_proc = MagicMock()
         mock_proc.pid = 12345
-        with patch("lib.server.run_agent", return_value=mock_proc) as mock_run:
+        with patch("mawlib.server.run_agent", return_value=mock_proc) as mock_run:
             response = client.post("/api/dispatch?agent_id=1&task=hello")
         assert response.status_code == 200
         data = response.json()

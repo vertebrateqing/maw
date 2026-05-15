@@ -81,8 +81,7 @@ class StateBroadcaster:
                 else:
                     await asyncio.sleep(0.5)
         except asyncio.CancelledError:
-            print("[MAW-Broadcast] SSE client disconnected")
-            raise
+            # Normal disconnect (client closed tab/refreshed page)
+            pass
         finally:
-            print("[MAW-Broadcast] SSE client cleanup")
             self.remove_client(callback)

@@ -2,8 +2,8 @@
 """Render the MAW agent prompt template.
 
 Used by both the bash CLI (`bin/maw dispatch`) and the Python runner
-(`lib/agent_runner.py`) so the workflow rules live in exactly one file:
-`lib/agent_prompt.tmpl`.
+(`mawlib/agent_runner.py`) so the workflow rules live in exactly one file:
+`mawlib/agent_prompt.tmpl`.
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ import signal
 import sys
 from pathlib import Path
 
-from lib.build_prompt import render as render_prompt
+from mawlib.build_prompt import render as render_prompt
 
 MAW_INSTALL_DIR = Path(__file__).parent.parent.resolve()
 

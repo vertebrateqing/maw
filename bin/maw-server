@@ -13,7 +13,7 @@ fi
 # Ensure maw is in PATH
 export PATH="$MAW_DIR/bin:$PATH"
 
-# Allow uvicorn to import lib.server from the maw installation dir
+# Allow uvicorn to import mawlib.server from the maw installation dir
 export PYTHONPATH="${MAW_DIR}:${PYTHONPATH:-}"
 
 # Auto-initialize project if needed
@@ -33,4 +33,4 @@ elif [[ "$(maw status 2>/dev/null | grep -c 'ID')" == "0" ]]; then
 fi
 
 # Start uvicorn (stay in project directory so server.py sees cwd as project root)
-exec uvicorn lib.server:app --host 0.0.0.0 --port "${MAW_PORT:-8080}" --reload
+exec uvicorn mawlib.server:app --host 0.0.0.0 --port "${MAW_PORT:-8080}" --reload

@@ -10,26 +10,24 @@ import subprocess
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sse_starlette.sse import EventSourceResponse
-from lib.sse_broadcaster import StateBroadcaster
-from lib.agent_runner import run_agent, kill_agent
-from lib.auto_dispatcher import AutoDispatcher
+from mawlib.sse_broadcaster import StateBroadcaster
+from mawlib.agent_runner import run_agent, kill_agent
+from mawlib.auto_dispatcher import AutoDispatcher
 
 def _get_project_root() -> Path:
-    """Find git project root, anchored to this file's location (not cwd)."""
-    # Use the directory containing this file as the anchor so that running
-    # maw-server from an unrelated directory still resolves to the maw repo.
-    anchor = Path(__file__).parent.parent.resolve()
+    """Find git project root from the current working directory."""
     result = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
-        cwd=str(anchor),
     )
     if result.returncode == 0:
         return Path(result.stdout.strip())
-    return anchor
+    print(f"[MAW] Error: Not a git repository. {result.stderr.strip()}")
+    import sys
+    sys.exit(1)
 
 
 MAW_DIR = _get_project_root()
@@ -77,6 +75,27 @@ if STATIC_DIR.exists():
 @app.get("/")
 async def root():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/favicon.svg")
+async def favicon_svg():
+    if (STATIC_DIR / "favicon.svg").exists():
+        return FileResponse(STATIC_DIR / "favicon.svg")
+    return Response(status_code=204)
+
+
+@app.get("/favicon.ico")
+async def favicon_ico():
+    if (STATIC_DIR / "favicon.svg").exists():
+        return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+    return Response(status_code=204)
+
+
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+async def apple_touch_icon():
+    return Response(status_code=204)
+
 
 @app.get("/api/status")
 async def api_status():
@@ -158,7 +177,14 @@ async def api_messages_delete(msg_id: str):
 @app.get("/api/events")
 async def api_events(request: Request):
     bc = get_broadcaster()
-    return EventSourceResponse(bc.event_generator(request))
+
+    async def generator():
+        async for event in bc.event_generator(request):
+            data = json.loads(event["data"])
+            data["cwd"] = str(MAW_DIR)
+            yield {"data": json.dumps(data)}
+
+    return EventSourceResponse(generator())
 
 
 @app.post("/api/dispatch")

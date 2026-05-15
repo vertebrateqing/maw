@@ -5,10 +5,10 @@ MAW_VERSION="0.2.3"
 MAW_DIR="${MAW_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
 # Source libraries
-source "${MAW_DIR}/lib/core.sh"
-source "${MAW_DIR}/lib/state.sh"
-source "${MAW_DIR}/lib/git.sh"
-source "${MAW_DIR}/lib/ui.sh"
+source "${MAW_DIR}/mawlib/core.sh"
+source "${MAW_DIR}/mawlib/state.sh"
+source "${MAW_DIR}/mawlib/git.sh"
+source "${MAW_DIR}/mawlib/ui.sh"
 
 # maw_help - show usage information
 maw_help() {
@@ -125,13 +125,13 @@ maw_cmd_dispatch() {
   # Build the workflow-augmented prompt via the shared Python helper so the
   # bash CLI and the FastAPI dispatch path share a single template.
   local enhanced_task
-  if ! enhanced_task=$(python3 "${MAW_DIR}/lib/build_prompt.py" "$agent_id" "$worktree" "$task"); then
+  if ! enhanced_task=$(python3 "${MAW_DIR}/mawlib/build_prompt.py" "$agent_id" "$worktree" "$task"); then
     maw_state_update_agent "$agent_id" "idle" ""
     maw_die "Failed to build agent prompt"
   fi
 
   # Run claude via agent_wrapper for stream-json parsing
-  python3 "${root}/lib/agent_wrapper.py" "$enhanced_task" "$worktree" "$log_file" > /dev/null 2>&1 &
+  python3 "${MAW_DIR}/mawlib/agent_wrapper.py" "$enhanced_task" "$worktree" "$log_file" > /dev/null 2>&1 &
 
   local pid=$!
   maw_state_update_agent "$agent_id" "running" "$task" "$pid"
